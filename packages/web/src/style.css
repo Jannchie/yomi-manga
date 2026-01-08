@@ -8,6 +8,8 @@
   --muted: #5f646c;
   --surface: #fbfbfa;
   --surface-muted: #efeeec;
+  --skeleton-line-height: 1.25em;
+  --skeleton-line-gap: 0.5em;
   color-scheme: light;
 }
 
@@ -34,6 +36,43 @@ body {
   color: var(--ink);
   background-color: var(--bg);
   line-height: 1.6;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}
+
+.skeleton,
+.manga-placeholder {
+  background-color: var(--surface-muted);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-line {
+  display: block;
+  width: 100%;
+  height: var(--skeleton-line-height);
+}
+
+.skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--skeleton-line-gap);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .manga-placeholder {
+    animation: none;
+  }
 }
 
 a {
@@ -106,7 +145,7 @@ img {
 }
 
 .manga-grid {
-  --grid-columns: 1;
+  --grid-columns: 2;
   --grid-gap-x: 1rem;
   --grid-gap-y: 1rem;
   --grid-line: 1px;
@@ -159,12 +198,6 @@ img {
   pointer-events: none;
 }
 
-@media (min-width: 640px) {
-  .manga-grid {
-    --grid-columns: 2;
-  }
-}
-
 @media (min-width: 1024px) {
   .manga-grid {
     --grid-columns: 3;
@@ -185,10 +218,6 @@ img {
 
 .manga-image-cover {
   transform: translateZ(0);
-}
-
-.manga-placeholder {
-  background-color: var(--surface-muted);
 }
 
 .app-header {

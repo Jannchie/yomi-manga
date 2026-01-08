@@ -23,7 +23,7 @@ const loading = ref(false)
 const error = ref<ErrorState | null>(null)
 const types = ref<string[]>([])
 const selectedType = ref<string | null>(parseType(route.query.type))
-const columns = ref(1)
+const columns = ref(2)
 const gridRef = ref<HTMLElement | null>(null)
 const gridWidth = ref(0)
 const loadedCovers = ref<Record<number, boolean>>({})
@@ -141,6 +141,14 @@ watch([page, selectedType], () => {
   void load()
 })
 
+watch(page, (value, previous) => {
+  if (value === previous) {
+    return
+  }
+
+  scrollToTop()
+})
+
 watch(
   () => route.query.page,
   (value) => {
@@ -198,12 +206,7 @@ function updateColumns(): void {
     return
   }
 
-  if (width >= 640) {
-    columns.value = 2
-    return
-  }
-
-  columns.value = 1
+  columns.value = 2
 }
 
 function markCoverLoaded(id: number): void {
@@ -310,6 +313,14 @@ function updateTypeQuery(nextType: string | null): void {
     query: nextQuery,
   })
 }
+
+function scrollToTop(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.scrollTo({ top: 0, behavior: 'auto' })
+}
 </script>
 
 <template>
@@ -356,8 +367,15 @@ function updateTypeQuery(nextType: string | null): void {
         :key="index"
         class="manga-card manga-card--placeholder flex flex-col bg-(--surface)"
       >
-        <div class="relative aspect-2/3 w-full bg-(--surface-muted)" />
-        <div class="manga-card-meta px-3 py-2" />
+        <div class="relative aspect-2/3 w-full">
+          <div class="skeleton absolute inset-0" />
+        </div>
+        <div class="manga-card-meta px-3 py-2">
+          <div class="skeleton-lines" aria-hidden="true">
+            <div class="skeleton skeleton-line text-sm" />
+            <div class="skeleton skeleton-line text-xs" />
+          </div>
+        </div>
       </div>
     </div>
     <div

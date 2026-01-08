@@ -44,6 +44,8 @@ coverage
 *.db-*
 *.sqlite
 *.sqlite-*
+assets/
+!assets/.gitkeep
 
 # Misc
 *.local

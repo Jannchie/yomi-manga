@@ -227,13 +227,41 @@ function markPageLoaded(id: number): void {
             {{ t('viewer.backToList') }}
           </RouterLink>
           <h1 class="text-2xl font-semibold text-(--ink)">
-            {{ mangaTitle ?? t('common.manga') }}
+            <span
+              v-if="loading"
+              class="skeleton skeleton-line"
+              aria-hidden="true"
+            />
+            <span v-else>
+              {{ mangaTitle ?? t('common.manga') }}
+            </span>
           </h1>
-          <p class="text-sm text-(--muted)">
+          <p
+            v-if="loading"
+            class="text-sm text-(--muted)"
+          >
+            <span
+              class="skeleton skeleton-line"
+              aria-hidden="true"
+            />
+          </p>
+          <p
+            v-else
+            class="text-sm text-(--muted)"
+          >
             {{ pageCountLabel }}
           </p>
           <p
-            v-if="mangaMetaLine"
+            v-if="loading"
+            class="mt-1 text-xs text-(--muted)"
+          >
+            <span
+              class="skeleton skeleton-line"
+              aria-hidden="true"
+            />
+          </p>
+          <p
+            v-else-if="mangaMetaLine"
             class="mt-1 line-clamp-1 text-xs text-(--muted)"
           >
             {{ mangaMetaLine }}
@@ -249,9 +277,13 @@ function markPageLoaded(id: number): void {
       </div>
       <div
         v-else-if="loading"
-        class="mt-6 text-sm text-(--muted)"
+        class="mt-6"
+        aria-hidden="true"
       >
-        {{ t('viewer.loadingPages') }}
+        <div class="skeleton-lines">
+          <div class="skeleton skeleton-line text-sm" />
+          <div class="skeleton skeleton-line text-sm" />
+        </div>
       </div>
       <div
         v-else-if="pages.length === 0"
