@@ -366,12 +366,17 @@ function buildImageModifiers(
   const scaledWidth = width ? Math.round(width * scale) : null
   const scaledHeight = height ? Math.round(height * scale) : null
 
-  if (scaledWidth) {
-    modifiers.w = String(scaledWidth)
+  if (scaledWidth && scaledHeight) {
+    modifiers.resize = `${scaledWidth}x${scaledHeight}`
   }
+  else {
+    if (scaledWidth) {
+      modifiers.w = String(scaledWidth)
+    }
 
-  if (scaledHeight) {
-    modifiers.h = String(scaledHeight)
+    if (scaledHeight) {
+      modifiers.h = String(scaledHeight)
+    }
   }
 
   if (fit) {

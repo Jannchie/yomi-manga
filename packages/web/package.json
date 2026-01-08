@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vueuse/core": "^14.1.0",
     "vue": "^3.5.24",
+    "vue-i18n": "^11.2.8",
     "vue-router": "^4.6.4",
     "vue-wf": "^0.8.1"
   },

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 interface PaginationProps {
   page: number
@@ -16,6 +17,7 @@ type PaginationItem = number | 'ellipsis'
 
 const props = defineProps<PaginationProps>()
 const emit = defineEmits<PaginationEmits>()
+const { t } = useI18n()
 
 const total = computed(() => Math.max(1, props.totalPages))
 const current = computed(() => Math.min(Math.max(props.page, 1), total.value))
@@ -90,8 +92,8 @@ function goTo(target: number): void {
 
 <template>
   <nav
-    class="mt-8 flex flex-wrap items-center justify-center gap-2"
-    aria-label="Pagination"
+    class="pagination-bar flex flex-wrap items-center justify-center"
+    :aria-label="t('pagination.label')"
   >
     <button
       type="button"
@@ -99,10 +101,10 @@ function goTo(target: number): void {
       :disabled="previousDisabled"
       @click="goTo(current - 1)"
     >
-      Prev
+      {{ t('pagination.prev') }}
     </button>
 
-    <div class="flex items-center gap-1">
+    <div class="flex items-center">
       <template
         v-for="(item, index) in items"
         :key="`${item}-${index}`"
@@ -133,26 +135,43 @@ function goTo(target: number): void {
       :disabled="nextDisabled"
       @click="goTo(current + 1)"
     >
-      Next
+      {{ t('pagination.next') }}
     </button>
   </nav>
 </template>
 
 <style scoped>
+.pagination-bar {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+  padding: 0;
+}
+
 .pagination-btn {
   border: 0;
-  border-radius: 0.375rem;
-  padding: 0.25rem 0.75rem;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0.35rem 0.85rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
-  background-color: var(--surface-muted);
+  background-color: transparent;
   color: var(--muted);
   transition: background-color 150ms ease, color 150ms ease;
 }
 
-.pagination-btn:hover {
-  background-color: var(--surface);
-  color: var(--ink);
+.pagination-bar > .pagination-btn:first-child {
+  border-left: 1px solid var(--border);
+}
+
+.pagination-btn:not(:disabled):not(.pagination-btn--active):hover {
+  background-color: var(--muted);
+  color: var(--surface);
+}
+
+.pagination-btn:not(:disabled):active {
+  background-color: var(--ink);
+  color: var(--surface);
 }
 
 .pagination-btn:disabled {
@@ -161,12 +180,15 @@ function goTo(target: number): void {
 }
 
 .pagination-btn--active {
-  background-color: var(--surface);
-  color: var(--ink);
+  background-color: var(--ink);
+  color: var(--surface);
 }
 
 .pagination-ellipsis {
-  padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--border);
+  padding: 0.35rem 0.85rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--muted);

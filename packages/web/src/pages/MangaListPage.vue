@@ -1,29 +1,73 @@
 <script setup lang="ts">
 import type { MangaListItem } from '../lib/api'
 
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useResizeObserver } from '@vueuse/core'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { Waterfall } from 'vue-wf'
 
 import PaginationBar from '../components/PaginationBar.vue'
 import { buildImageUrl, fetchMangaPage, fetchMangaTypes } from '../lib/api'
 
+type ErrorState = { message: string } | { key: 'loadManga' }
+
 const route = useRoute()
 const router = useRouter()
+const { t, te } = useI18n()
 const page = ref(parsePage(route.query.page) ?? 1)
 const pageSize = 12
+const placeholderItems = Array.from({ length: pageSize }, (_, index) => index)
 const items = ref<MangaListItem[]>([])
 const total = ref(0)
 const loading = ref(false)
-const error = ref<string | null>(null)
+const error = ref<ErrorState | null>(null)
 const types = ref<string[]>([])
 const selectedType = ref<string | null>(parseType(route.query.type))
-const scrollElement = ref<Window | null>(null)
 const columns = ref(1)
+const gridRef = ref<HTMLElement | null>(null)
+const gridWidth = ref(0)
 const loadedCovers = ref<Record<number, boolean>>({})
+const gridGapX = 16
+const gridGapY = 16
+const gridMetaHeight = 64
+const coverAspectRatio = 1.5
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
-const waterfallItems = computed(() => items.value.map(() => ({ width: 2, height: 3 })))
+const errorMessage = computed(() => {
+  if (!error.value) {
+    return null
+  }
+  if ('message' in error.value) {
+    return error.value.message
+  }
+  if (error.value.key === 'loadManga') {
+    return t('errors.loadManga')
+  }
+  return null
+})
+const gridStyle = computed<Record<string, string>>(() => {
+  const columnCount = Math.max(1, columns.value)
+  const styles: Record<string, string> = {
+    '--grid-columns': String(columnCount),
+    '--grid-gap-x': `${gridGapX}px`,
+    '--grid-gap-y': `${gridGapY}px`,
+    '--card-meta-height': `${gridMetaHeight}px`,
+  }
+
+  if (gridWidth.value > 0) {
+    const columnWidth = Math.max(
+      0,
+      (gridWidth.value - gridGapX * (columnCount - 1)) / columnCount,
+    )
+    const rowHeight = columnWidth * coverAspectRatio + gridMetaHeight
+    styles['--grid-col'] = `${columnWidth}px`
+    styles['--grid-row'] = `${rowHeight}px`
+    styles['--grid-x-step'] = `${columnWidth + gridGapX}px`
+    styles['--grid-y-step'] = `${rowHeight + gridGapY}px`
+  }
+
+  return styles
+})
 const coverBaseWidth = computed(() => {
   if (columns.value >= 3) {
     return 360
@@ -65,7 +109,7 @@ async function load(): Promise<void> {
     }
   }
   catch (error_) {
-    error.value = error_ instanceof Error ? error_.message : 'Failed to load manga'
+    error.value = error_ instanceof Error ? { message: error_.message } : { key: 'loadManga' }
   }
   finally {
     loading.value = false
@@ -82,11 +126,11 @@ async function loadTypes(): Promise<void> {
 }
 
 onMounted(() => {
-  scrollElement.value = globalThis.window
   updateColumns()
   globalThis.window.addEventListener('resize', updateColumns)
   void loadTypes()
   void load()
+  void refreshGridWidth()
 })
 
 onBeforeUnmount(() => {
@@ -117,6 +161,36 @@ watch(
   },
 )
 
+watch(gridRef, () => {
+  void refreshGridWidth()
+})
+
+watch([items, columns], () => {
+  void refreshGridWidth()
+})
+
+useResizeObserver(gridRef, (entries) => {
+  const entry = entries[0]
+  if (!entry) {
+    return
+  }
+
+  gridWidth.value = entry.contentRect.width
+})
+
+async function refreshGridWidth(): Promise<void> {
+  await nextTick()
+  updateGridWidth()
+}
+
+function updateGridWidth(): void {
+  if (!gridRef.value) {
+    return
+  }
+
+  gridWidth.value = gridRef.value.getBoundingClientRect().width
+}
+
 function updateColumns(): void {
   const width = globalThis.window.innerWidth
   if (width >= 1024) {
@@ -141,7 +215,7 @@ function buildMetaLine(item: MangaListItem): string | null {
   if (item.type) {
     const trimmed = item.type.trim()
     if (trimmed) {
-      parts.push(trimmed)
+      parts.push(typeLabel(trimmed))
     }
   }
   if (item.tags && item.tags.length > 0) {
@@ -149,6 +223,11 @@ function buildMetaLine(item: MangaListItem): string | null {
     parts.push(...tags)
   }
   return parts.length > 0 ? parts.join(' · ') : null
+}
+
+function typeLabel(type: string): string {
+  const key = `categories.${type}`
+  return te(key) ? t(key) : type
 }
 
 function parsePage(value: unknown): number | null {
@@ -178,7 +257,7 @@ function parseType(value: unknown): string | null {
   }
 
   const trimmed = value.trim()
-  return trimmed ? trimmed : null
+  return trimmed || null
 }
 
 function updatePageQuery(nextPage: number): void {
@@ -235,65 +314,69 @@ function updateTypeQuery(nextType: string | null): void {
 
 <template>
   <section>
-    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-      <span class="text-xs uppercase tracking-[0.2em] text-(--muted)">
-        Category
-      </span>
-      <div class="flex flex-wrap gap-2">
+    <div class="type-filter-bar flex flex-col sm:flex-row sm:items-center">
+      <div class="type-filter-row flex flex-wrap">
         <button
           type="button"
-          class="rounded-md border px-3 py-1 text-xs transition-colors"
-          :class="selectedType === null ? 'border-(--border) bg-(--surface-muted) text-(--ink)' : 'border-(--border) text-(--muted) hover:border-blue-400 hover:text-blue-600'"
+          class="type-filter-btn px-3 py-1.5 text-xs"
+          :class="selectedType === null ? 'type-filter-btn--active' : ''"
           :aria-pressed="selectedType === null"
           @click="selectType(null)"
         >
-          All
+          {{ t('common.all') }}
         </button>
         <button
           v-for="type in types"
           :key="type"
           type="button"
-          class="rounded-md border px-3 py-1 text-xs transition-colors"
-          :class="selectedType === type ? 'border-(--border) bg-(--surface-muted) text-(--ink)' : 'border-(--border) text-(--muted) hover:border-blue-400 hover:text-blue-600'"
+          class="type-filter-btn px-3 py-1.5 text-xs"
+          :class="selectedType === type ? 'type-filter-btn--active' : ''"
           :aria-pressed="selectedType === type"
           @click="selectType(type)"
         >
-          {{ type }}
+          {{ typeLabel(type) }}
         </button>
       </div>
     </div>
     <div
-      v-if="error"
+      v-if="errorMessage"
       class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
     >
-      {{ error }}
+      {{ errorMessage }}
     </div>
     <div
       v-else-if="loading"
-      class="text-sm text-(--muted)"
+      class="manga-grid"
+      ref="gridRef"
+      :style="gridStyle"
+      aria-hidden="true"
     >
-      Loading manga...
+      <div
+        v-for="index in placeholderItems"
+        :key="index"
+        class="manga-card manga-card--placeholder flex flex-col bg-(--surface)"
+      >
+        <div class="relative aspect-2/3 w-full bg-(--surface-muted)" />
+        <div class="manga-card-meta px-3 py-2" />
+      </div>
     </div>
     <div
       v-else-if="items.length === 0"
       class="rounded-md border border-(--border) bg-(--surface) px-4 py-6 text-sm text-(--muted)"
     >
-      No manga yet.
+      {{ t('list.empty') }}
     </div>
-    <Waterfall
+    <div
       v-else
-      class="mt-6"
-      :items="waterfallItems"
-      :cols="columns"
-      :gap="16"
-      :item-padding="{ x: 0, y: 56 }"
-      :scroll-element="scrollElement"
+      class="manga-grid"
+      ref="gridRef"
+      :style="gridStyle"
     >
       <RouterLink
         v-for="item in items"
         :key="item.id"
         :to="`/manga/${item.id}`"
-        class="flex flex-col bg-(--surface)"
+        class="manga-card flex flex-col bg-(--surface)"
       >
         <div class="relative aspect-2/3 w-full overflow-hidden bg-(--surface-muted)">
           <div
@@ -304,7 +387,7 @@ function updateTypeQuery(nextType: string | null): void {
             v-if="item.coverPath"
             :src="coverImageUrl(item.coverPath)"
             :srcset="coverImageSrcSet(item.coverPath)"
-            :alt="`${item.title} cover`"
+            :alt="t('list.coverAlt', { title: item.title })"
             class="manga-image manga-image-cover absolute inset-0 z-10 h-full w-full object-cover"
             loading="lazy"
             @load="markCoverLoaded(item.id)"
@@ -314,10 +397,10 @@ function updateTypeQuery(nextType: string | null): void {
             v-else
             class="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-(--muted)"
           >
-            No cover
+            {{ t('list.noCover') }}
           </div>
         </div>
-        <div class="px-3 py-2">
+        <div class="manga-card-meta px-3 py-2">
           <p class="line-clamp-1 text-sm font-semibold text-(--ink)">
             {{ item.title }}
           </p>
@@ -329,7 +412,7 @@ function updateTypeQuery(nextType: string | null): void {
           </p>
         </div>
       </RouterLink>
-    </Waterfall>
+    </div>
 
     <PaginationBar
       v-if="items.length > 0 && totalPages > 1"
@@ -337,6 +420,11 @@ function updateTypeQuery(nextType: string | null): void {
       :total-pages="totalPages"
       :disabled="loading"
       @change="updatePageQuery($event)"
+    />
+    <div
+      v-if="items.length > 0 && totalPages > 1"
+      class="h-4"
+      aria-hidden="true"
     />
   </section>
 </template>
