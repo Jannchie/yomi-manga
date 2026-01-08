@@ -1,0 +1,27 @@
+{
+  "name": "yomi-manga",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter ./packages/api dev",
+    "dev:web": "pnpm --filter ./packages/web dev",
+    "build": "pnpm -r build",
+    "lint": "eslint .",
+    "preview": "pnpm --filter ./packages/web preview",
+    "sync": "pnpm --filter ./packages/api sync"
+  },
+  "devDependencies": {
+    "@jannchie/eslint-config": "^3.7.5",
+    "eslint": "^9.39.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "npm:rolldown-vite@7.2.5"
+    },
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  }
+}
