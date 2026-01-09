@@ -30,6 +30,14 @@ const messages = {
     pageCount: '{count} pages',
     pageCountSingle: '{count} page',
   },
+  rating: {
+    label: 'Rating',
+    value: 'Rated {value}/5',
+    valueShort: '{value}/5',
+    unrated: 'Not rated',
+    set: 'Set {value} stars',
+    updateFailed: 'Failed to update rating',
+  },
   pagination: {
     label: 'Pagination',
     prev: 'Prev',

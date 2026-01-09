@@ -7,7 +7,8 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { Waterfall } from 'vue-wf'
 
-import { buildImageUrl, fetchMangaMeta, fetchMangaPages } from '../lib/api'
+import StarRating from '../components/StarRating.vue'
+import { buildImageUrl, fetchMangaMeta, fetchMangaPages, updateMangaRating } from '../lib/api'
 
 type ErrorState = { message: string } | { key: 'invalidMangaId' | 'loadManga' }
 
@@ -18,11 +19,14 @@ const pages = ref<MangaPage[]>([])
 const mangaTitle = ref<string | null>(null)
 const mangaTags = ref<string[] | null>(null)
 const mangaType = ref<string | null>(null)
+const mangaRating = ref<number | null>(null)
 const loading = ref(false)
 const error = ref<ErrorState | null>(null)
 const scrollElement = ref<Window | null>(null)
 const currentOffset = ref<number | null>(null)
 const loadedPages = ref<Record<number, boolean>>({})
+const ratingUpdating = ref(false)
+const ratingError = ref<string | null>(null)
 
 const HASH_PREFIX = '#y='
 let isActive = true
@@ -72,6 +76,15 @@ const pageCountLabel = computed(() => {
   }
   return t('viewer.pageCount', { count })
 })
+const ratingLabel = computed(() => {
+  if (mangaRating.value === null) {
+    return t('rating.unrated')
+  }
+  return t('rating.valueShort', { value: mangaRating.value })
+})
+const ratingDisabled = computed(
+  () => loading.value || ratingUpdating.value || error.value !== null,
+)
 
 async function load(): Promise<void> {
   const mangaId = Number(route.params.id)
@@ -81,6 +94,9 @@ async function load(): Promise<void> {
     mangaTitle.value = null
     mangaTags.value = null
     mangaType.value = null
+    mangaRating.value = null
+    ratingError.value = null
+    ratingUpdating.value = false
     loading.value = false
     return
   }
@@ -88,6 +104,8 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   mangaTitle.value = null
+  ratingError.value = null
+  ratingUpdating.value = false
 
   try {
     const [meta, pageData] = await Promise.all([
@@ -97,6 +115,7 @@ async function load(): Promise<void> {
     mangaTitle.value = meta.title
     mangaTags.value = meta.tags
     mangaType.value = meta.type
+    mangaRating.value = typeof meta.rating === 'number' ? meta.rating : null
     loadedPages.value = {}
     pages.value = pageData
   }
@@ -105,6 +124,7 @@ async function load(): Promise<void> {
     mangaTitle.value = null
     mangaTags.value = null
     mangaType.value = null
+    mangaRating.value = null
   }
   finally {
     loading.value = false
@@ -213,11 +233,39 @@ function pageAspectRatio(page: MangaPage): string {
 function markPageLoaded(id: number): void {
   loadedPages.value = { ...loadedPages.value, [id]: true }
 }
+
+async function updateRating(nextRating: number | null): Promise<void> {
+  if (ratingUpdating.value || nextRating === mangaRating.value) {
+    return
+  }
+
+  const mangaId = Number(route.params.id)
+  if (!Number.isInteger(mangaId) || mangaId <= 0) {
+    return
+  }
+
+  const previousRating = mangaRating.value
+  mangaRating.value = nextRating
+  ratingUpdating.value = true
+  ratingError.value = null
+
+  try {
+    const response = await updateMangaRating(mangaId, nextRating)
+    mangaRating.value = response.rating
+  }
+  catch {
+    mangaRating.value = previousRating
+    ratingError.value = t('rating.updateFailed')
+  }
+  finally {
+    ratingUpdating.value = false
+  }
+}
 </script>
 
 <template>
   <section>
-    <div class="mx-auto max-w-6xl">
+    <div>
       <div class="viewer-header flex flex-col sm:flex-row sm:items-end sm:justify-between pb-2">
         <div class="viewer-meta">
           <RouterLink
@@ -250,6 +298,31 @@ function markPageLoaded(id: number): void {
             class="text-sm text-(--muted)"
           >
             {{ pageCountLabel }}
+          </p>
+          <div
+            v-if="!errorMessage"
+            class="mt-2 flex flex-wrap items-center gap-2 text-xs text-(--muted)"
+          >
+            <span>{{ t('rating.label') }}</span>
+            <div
+              v-if="loading"
+              class="skeleton skeleton-line w-24"
+              aria-hidden="true"
+            />
+            <template v-else>
+              <StarRating
+                :value="mangaRating"
+                :disabled="ratingDisabled"
+                @change="updateRating"
+              />
+              <span>{{ ratingLabel }}</span>
+            </template>
+          </div>
+          <p
+            v-if="!errorMessage && ratingError"
+            class="mt-1 text-xs text-red-600"
+          >
+            {{ ratingError }}
           </p>
           <p
             v-if="loading"
@@ -295,7 +368,6 @@ function markPageLoaded(id: number): void {
 
     <Waterfall
       v-if="!errorMessage && !loading && pages.length > 0"
-      class="mx-auto mt-4 w-full max-w-6xl"
       :items="waterfallItems"
       :cols="1"
       :gap="0"

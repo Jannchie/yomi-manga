@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import PaginationBar from '../components/PaginationBar.vue'
+import StarRating from '../components/StarRating.vue'
 import { buildImageUrl, fetchMangaPage, fetchMangaTypes } from '../lib/api'
 
 type ErrorState = { message: string } | { key: 'loadManga' }
@@ -315,7 +316,7 @@ function updateTypeQuery(nextType: string | null): void {
 }
 
 function scrollToTop(): void {
-  if (typeof window === 'undefined') {
+  if (globalThis.window === undefined) {
     return
   }
 
@@ -357,8 +358,8 @@ function scrollToTop(): void {
     </div>
     <div
       v-else-if="loading"
-      class="manga-grid"
       ref="gridRef"
+      class="manga-grid"
       :style="gridStyle"
       aria-hidden="true"
     >
@@ -371,7 +372,10 @@ function scrollToTop(): void {
           <div class="skeleton absolute inset-0" />
         </div>
         <div class="manga-card-meta px-3 py-2">
-          <div class="skeleton-lines" aria-hidden="true">
+          <div
+            class="skeleton-lines"
+            aria-hidden="true"
+          >
             <div class="skeleton skeleton-line text-sm" />
             <div class="skeleton skeleton-line text-xs" />
           </div>
@@ -386,8 +390,8 @@ function scrollToTop(): void {
     </div>
     <div
       v-else
-      class="manga-grid"
       ref="gridRef"
+      class="manga-grid"
       :style="gridStyle"
     >
       <RouterLink
@@ -419,9 +423,17 @@ function scrollToTop(): void {
           </div>
         </div>
         <div class="manga-card-meta px-3 py-2">
-          <p class="line-clamp-1 text-sm font-semibold text-(--ink)">
-            {{ item.title }}
-          </p>
+          <div class="flex items-center justify-between gap-2">
+            <p class="line-clamp-1 text-sm font-semibold text-(--ink)">
+              {{ item.title }}
+            </p>
+            <StarRating
+              v-if="typeof item.rating === 'number'"
+              :value="item.rating"
+              size="sm"
+              readonly
+            />
+          </div>
           <p
             v-if="buildMetaLine(item)"
             class="mt-1 line-clamp-1 text-xs text-(--muted)"

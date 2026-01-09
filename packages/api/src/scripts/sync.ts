@@ -272,7 +272,7 @@ function pickPublishedAtFromRecord(record: Record<string, unknown>): number | nu
 }
 
 function normalizeKey(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return value.toLowerCase().replaceAll(/[^a-z0-9]/g, '')
 }
 
 function parseDateValue(value: unknown): number | null {
@@ -449,7 +449,7 @@ function parseArgs(args: string[]): SyncOptions | null {
   }
 
   const rootArg = readArgValue(args, '--root') ?? readArgValue(args, '-r')
-  const rootFromEnv = process.env.MANGA_ROOT ?? process.env.MEDIA_ROOT ?? '/mnt/nas/h-manga'
+  const rootFromEnv = process.env.MANGA_ROOT ?? process.env.MEDIA_ROOT ?? 'assets'
   const root = path.resolve(process.cwd(), rootArg ?? rootFromEnv)
 
   return {

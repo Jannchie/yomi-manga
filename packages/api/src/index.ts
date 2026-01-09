@@ -58,21 +58,24 @@ app.get('/manga', (c) => {
     return c.json({ error: 'invalid_page_size' }, 400)
   }
 
-  let totalQuery = db
-    .select({ count: sql<number>`count(*)` })
-    .from(mangaMeta)
-  if (normalizedType) {
-    totalQuery = totalQuery.where(eq(mangaMeta.type, normalizedType))
-  }
-  const totalRow = totalQuery.all()[0]
+  const totalRow = (normalizedType
+    ? db
+        .select({ count: sql<number>`count(*)` })
+        .from(mangaMeta)
+        .where(eq(mangaMeta.type, normalizedType))
+    : db
+        .select({ count: sql<number>`count(*)` })
+        .from(mangaMeta))
+    .all()[0]
   const total = totalRow?.count ?? 0
 
-  let metaQuery = db
+  const baseMetaQuery = db
     .select({
       id: mangaMeta.id,
       title: mangaMeta.title,
       type: mangaMeta.type,
       tags: mangaMeta.tags,
+      rating: mangaMeta.rating,
     })
     .from(mangaMeta)
     .orderBy(
@@ -80,13 +83,18 @@ app.get('/manga', (c) => {
       desc(mangaMeta.publishedAt),
       desc(mangaMeta.id),
     )
-  if (normalizedType) {
-    metaQuery = metaQuery.where(eq(mangaMeta.type, normalizedType))
-  }
-  const metaRows = metaQuery
+  const metaRows = (normalizedType
+    ? baseMetaQuery.where(eq(mangaMeta.type, normalizedType))
+    : baseMetaQuery)
     .limit(pageSize)
     .offset((page - 1) * pageSize)
-    .all() as Array<{ id: number, title: string, type: string | null, tags: string | null }>
+    .all() as Array<{
+    id: number
+    title: string
+    type: string | null
+    tags: string | null
+    rating: number | null
+  }>
 
   const mangaIds = metaRows.map(row => row.id)
   const coverRows = mangaIds.length > 0
@@ -112,6 +120,7 @@ app.get('/manga', (c) => {
     coverPath: coverMap.get(row.id) ?? null,
     type: row.type,
     tags: parseTags(row.tags),
+    rating: row.rating,
   }))
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -140,7 +149,7 @@ app.get('/manga/types', (c) => {
   }
 
   const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
-  const data = Array.from(types).sort((a, b) => collator.compare(a, b))
+  const data = [...types].toSorted((a, b) => collator.compare(a, b))
   return c.json({ data })
 })
 
@@ -196,6 +205,7 @@ app.get('/manga/:id', (c) => {
       type: mangaMeta.type,
       tags: mangaMeta.tags,
       meta: mangaMeta.meta,
+      rating: mangaMeta.rating,
     })
     .from(mangaMeta)
     .where(eq(mangaMeta.id, mangaId))
@@ -209,6 +219,40 @@ app.get('/manga/:id', (c) => {
     ...row,
     tags: parseTags(row.tags),
   })
+})
+
+app.post('/manga/:id/rating', async (c) => {
+  const mangaId = Number(c.req.param('id'))
+  if (!Number.isInteger(mangaId) || mangaId <= 0) {
+    return c.json({ error: 'invalid_manga_id' }, 400)
+  }
+
+  const payload = await c.req.json().catch(() => null)
+  if (!payload || typeof payload !== 'object') {
+    return c.json({ error: 'invalid_payload' }, 400)
+  }
+
+  const { rating } = payload as { rating?: unknown }
+  const normalizedRating = normalizeRating(rating)
+  if (normalizedRating === undefined) {
+    return c.json({ error: 'invalid_payload' }, 400)
+  }
+
+  const existing = db
+    .select({ id: mangaMeta.id })
+    .from(mangaMeta)
+    .where(eq(mangaMeta.id, mangaId))
+    .all()[0]
+  if (!existing) {
+    return c.json({ error: 'not_found' }, 404)
+  }
+
+  db.update(mangaMeta)
+    .set({ rating: normalizedRating })
+    .where(eq(mangaMeta.id, mangaId))
+    .run()
+
+  return c.json({ rating: normalizedRating })
 })
 
 app.get('/manga/:id/pages', (c) => {
@@ -289,7 +333,7 @@ app.get('/image', async (c) => {
 
     try {
       const data = await readFile(targetPath)
-      return c.body(data, 200, {
+      return c.body(toResponseBody(data), 200, {
         'Cache-Control': `public, max-age=${resolvedImageMaxAge}`,
         'Content-Type': contentType(targetPath),
       })
@@ -306,7 +350,7 @@ app.get('/image', async (c) => {
     if (sourceMeta.mtime && ifModifiedSince) {
       const since = new Date(ifModifiedSince)
       if (!Number.isNaN(since.getTime()) && since >= sourceMeta.mtime) {
-        return c.text('', 304)
+        return new Response(null, { status: 304 })
       }
     }
 
@@ -324,7 +368,7 @@ app.get('/image', async (c) => {
       headers.Vary = 'Accept'
     }
 
-    return c.body(data, 200, headers)
+    return c.body(toResponseBody(data), 200, headers)
   }
   catch (error) {
     const status = extractIpxStatus(error)
@@ -343,7 +387,7 @@ app.get('/image', async (c) => {
 
 function normalizeImagePath(requestedPath: string): string | null {
   const normalizedPath = requestedPath.replace(/^[/\\]+/, '').trim()
-  return normalizedPath ? normalizedPath : null
+  return normalizedPath || null
 }
 
 function buildImageModifiers(
@@ -495,6 +539,18 @@ function contentType(filePath: string): string {
   }
 }
 
+function toResponseBody(
+  data: string | Uint8Array,
+): string | Uint8Array<ArrayBuffer> {
+  if (typeof data === 'string') {
+    return data
+  }
+
+  const copy = new Uint8Array(data.byteLength)
+  copy.set(data)
+  return copy
+}
+
 function parseTags(raw: string | null): string[] | null {
   if (!raw) {
     return null
@@ -516,13 +572,30 @@ function parseTags(raw: string | null): string[] | null {
   }
 }
 
+function normalizeRating(value: unknown): number | null | undefined {
+  if (value === null) {
+    return null
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined
+  }
+
+  const rounded = Math.round(value)
+  if (!Number.isInteger(rounded) || rounded < 1 || rounded > 5) {
+    return undefined
+  }
+
+  return rounded
+}
+
 function normalizeQueryValue(value: string | undefined): string | null {
   if (!value) {
     return null
   }
 
   const trimmed = value.trim()
-  return trimmed ? trimmed : null
+  return trimmed || null
 }
 
 const port = Number(process.env.PORT ?? 4347)

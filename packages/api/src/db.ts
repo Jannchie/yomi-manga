@@ -15,7 +15,8 @@ sqlite.exec(`
     type TEXT,
     tags TEXT,
     meta TEXT,
-    published_at INTEGER
+    published_at INTEGER,
+    rating INTEGER
   );
   CREATE TABLE IF NOT EXISTS manga_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +53,10 @@ if (!metaColumnNames.has('tags')) {
 
 if (!metaColumnNames.has('published_at')) {
   sqlite.exec('ALTER TABLE manga_meta ADD COLUMN published_at INTEGER')
+}
+
+if (!metaColumnNames.has('rating')) {
+  sqlite.exec('ALTER TABLE manga_meta ADD COLUMN rating INTEGER')
 }
 
 sqlite.exec('CREATE UNIQUE INDEX IF NOT EXISTS manga_meta_slug_idx ON manga_meta (slug)')

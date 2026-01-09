@@ -8,7 +8,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import { isLocale, localeStorageKey } from './i18n'
 
 const { locale, t } = useI18n()
-const mainClass = 'mx-auto max-w-6xl'
+const mainClass = 'mx-auto max-w-6xl w-full'
 
 const localeOptions = computed(() => [
   { value: 'en', label: t('locale.english') },
@@ -48,14 +48,14 @@ watch(
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen flex flex-col">
     <header class="app-header">
       <div class="content-frame mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <RouterLink
           class="text-lg font-semibold tracking-tight"
           to="/"
         >
-          Yomi Manga
+          読み
         </RouterLink>
         <div class="flex items-center gap-3">
           <span class="text-xs uppercase tracking-[0.2em] text-(--muted)">
@@ -77,7 +77,10 @@ watch(
         </div>
       </div>
     </header>
-    <main :class="['content-frame', mainClass]">
+    <main
+      class="content-frame flex-1"
+      :class="[mainClass]"
+    >
       <RouterView />
     </main>
   </div>

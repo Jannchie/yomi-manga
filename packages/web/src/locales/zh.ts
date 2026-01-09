@@ -30,6 +30,14 @@ const messages = {
     pageCount: '{count} 页',
     pageCountSingle: '{count} 页',
   },
+  rating: {
+    label: '评分',
+    value: '评分 {value}/5',
+    valueShort: '{value}/5',
+    unrated: '未评分',
+    set: '设置为 {value} 星',
+    updateFailed: '评分更新失败',
+  },
   pagination: {
     label: '分页',
     prev: '上一页',

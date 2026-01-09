@@ -30,6 +30,14 @@ const messages = {
     pageCount: '{count} ページ',
     pageCountSingle: '{count} ページ',
   },
+  rating: {
+    label: '評価',
+    value: '評価 {value}/5',
+    valueShort: '{value}/5',
+    unrated: '未評価',
+    set: '{value} 星に設定',
+    updateFailed: '評価の更新に失敗しました',
+  },
   pagination: {
     label: 'ページネーション',
     prev: '前へ',

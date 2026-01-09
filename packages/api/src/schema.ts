@@ -16,6 +16,7 @@ export const mangaMeta = sqliteTable(
     tags: text('tags'),
     meta: text('meta'),
     publishedAt: integer('published_at'),
+    rating: integer('rating'),
   },
   table => ({
     slugIndex: uniqueIndex('manga_meta_slug_idx').on(table.slug),

@@ -7,6 +7,7 @@ export interface MangaListItem {
   coverPath: string | null
   type: string | null
   tags: string[] | null
+  rating: number | null
 }
 
 export interface MangaMeta {
@@ -16,6 +17,7 @@ export interface MangaMeta {
   type: string | null
   tags: string[] | null
   meta: string | null
+  rating: number | null
 }
 
 export interface MangaPage {
@@ -95,8 +97,23 @@ export async function fetchMangaTypes(): Promise<string[]> {
   return response.data
 }
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`)
+export async function updateMangaRating(
+  mangaId: number,
+  rating: number | null,
+): Promise<{ rating: number | null }> {
+  return fetchJson(`/manga/${mangaId}/rating`, {
+    method: 'POST',
+    body: JSON.stringify({ rating }),
+  })
+}
+
+async function fetchJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers)
+  if (init.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const response = await fetch(`${apiBase}${path}`, { ...init, headers })
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`)
   }
