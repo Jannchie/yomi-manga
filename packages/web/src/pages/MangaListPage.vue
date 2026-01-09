@@ -246,6 +246,10 @@ function updateGridWidth(): void {
 
 function updateColumns(): void {
   const width = globalThis.window.innerWidth
+  if (width >= 1280) {
+    columns.value = 4
+    return
+  }
   if (width >= 1024) {
     columns.value = 3
     return
