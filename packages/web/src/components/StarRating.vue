@@ -113,7 +113,7 @@ function select(star: number): void {
         v-for="star in stars"
         :key="star"
         type="button"
-        class="inline-flex items-center justify-center rounded-sm p-0.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-(--ink)"
+        class="inline-flex items-center justify-center rounded-sm p-0.5 transition-colors focus-visible:outline focus-visible:outline-(--ink)"
         :title="t('rating.set', { value: star })"
         :aria-label="t('rating.set', { value: star })"
         @mouseenter="setHover(star)"

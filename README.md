@@ -25,6 +25,38 @@ pnpm preview    # Preview the web build
 pnpm sync       # Run API sync script
 ```
 
+## Docker
+
+Build the API image:
+
+```bash
+docker build --target api -t yomi-manga-api .
+```
+
+Run the API container (mount media and database):
+
+```bash
+docker run -p 4347:4347 \
+  -e MANGA_ROOT=/data \
+  -e DATABASE_URL=/data/data.db \
+  -v /path/to/media:/data \
+  yomi-manga-api
+```
+
+Build the web image (set API base URL):
+
+```bash
+docker build --target web \
+  --build-arg VITE_API_BASE=http://localhost:4347 \
+  -t yomi-manga-web .
+```
+
+Run the web container:
+
+```bash
+docker run -p 8080:80 yomi-manga-web
+```
+
 ## Project Structure
 
 ```text
