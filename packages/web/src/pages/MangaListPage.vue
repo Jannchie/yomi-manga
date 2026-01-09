@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MangaListItem } from '../lib/api'
 
-import { useResizeObserver } from '@vueuse/core'
+import { useDebounceFn, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -24,6 +24,9 @@ const loading = ref(false)
 const error = ref<ErrorState | null>(null)
 const types = ref<string[]>([])
 const selectedType = ref<string | null>(parseType(route.query.type))
+const initialSearch = parseSearch(route.query.q)
+const searchQuery = ref<string | null>(initialSearch)
+const searchInput = ref(initialSearch ?? '')
 const columns = ref(2)
 const gridRef = ref<HTMLElement | null>(null)
 const gridWidth = ref(0)
@@ -101,7 +104,12 @@ async function load(): Promise<void> {
   error.value = null
 
   try {
-    const response = await fetchMangaPage(page.value, pageSize, selectedType.value)
+    const response = await fetchMangaPage(
+      page.value,
+      pageSize,
+      selectedType.value,
+      searchQuery.value,
+    )
     items.value = response.data
     total.value = response.total
 
@@ -138,7 +146,20 @@ onBeforeUnmount(() => {
   globalThis.window.removeEventListener('resize', updateColumns)
 })
 
-watch([page, selectedType], () => {
+const commitSearch = useDebounceFn(() => {
+  const nextSearch = normalizeSearch(searchInput.value)
+  if (nextSearch === searchQuery.value && page.value === 1) {
+    return
+  }
+
+  searchQuery.value = nextSearch
+  if (page.value !== 1) {
+    page.value = 1
+  }
+  updateSearchQuery(nextSearch)
+}, 300)
+
+watch([page, selectedType, searchQuery], () => {
   void load()
 })
 
@@ -169,6 +190,29 @@ watch(
     }
   },
 )
+
+watch(
+  () => route.query.q,
+  (value) => {
+    const nextSearch = parseSearch(value)
+    if (nextSearch !== searchQuery.value) {
+      searchQuery.value = nextSearch
+    }
+
+    const nextInput = nextSearch ?? ''
+    if (nextInput !== searchInput.value) {
+      searchInput.value = nextInput
+    }
+  },
+)
+
+watch(searchInput, () => {
+  if (searchInput.value === (searchQuery.value ?? '')) {
+    return
+  }
+
+  commitSearch()
+})
 
 watch(gridRef, () => {
   void refreshGridWidth()
@@ -264,6 +308,24 @@ function parseType(value: unknown): string | null {
   return trimmed || null
 }
 
+function parseSearch(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    return parseSearch(value[0])
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed || null
+}
+
+function normalizeSearch(value: string): string | null {
+  const trimmed = value.trim()
+  return trimmed || null
+}
+
 function updatePageQuery(nextPage: number): void {
   const currentPage = parsePage(route.query.page) ?? 1
   if (currentPage === nextPage) {
@@ -315,6 +377,30 @@ function updateTypeQuery(nextType: string | null): void {
   })
 }
 
+function updateSearchQuery(nextSearch: string | null): void {
+  const currentSearch = parseSearch(route.query.q)
+  if (currentSearch === nextSearch && page.value === 1) {
+    return
+  }
+
+  const nextQuery: Record<string, string | string[] | null | undefined> = {
+    ...route.query,
+    page: '1',
+  }
+
+  if (nextSearch) {
+    nextQuery.q = nextSearch
+  }
+  else {
+    delete nextQuery.q
+  }
+
+  void router.push({
+    path: route.path,
+    query: nextQuery,
+  })
+}
+
 function scrollToTop(): void {
   if (globalThis.window === undefined) {
     return
@@ -326,6 +412,15 @@ function scrollToTop(): void {
 
 <template>
   <section>
+    <div class="search-bar">
+      <input
+        v-model="searchInput"
+        type="search"
+        class="search-input text-sm"
+        :placeholder="t('list.searchPlaceholder')"
+        :aria-label="t('list.searchLabel')"
+      >
+    </div>
     <div class="type-filter-bar flex flex-col sm:flex-row sm:items-center">
       <div class="type-filter-row flex flex-wrap">
         <button
@@ -384,7 +479,7 @@ function scrollToTop(): void {
     </div>
     <div
       v-else-if="items.length === 0"
-      class="rounded-md border border-(--border) bg-(--surface) px-4 py-6 text-sm text-(--muted)"
+      class="bg-(--surface) px-4 py-6 text-sm text-(--muted)"
     >
       {{ t('list.empty') }}
     </div>

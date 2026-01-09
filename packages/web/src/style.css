@@ -107,6 +107,29 @@ img {
   gap: 0;
 }
 
+.search-bar {
+  border-bottom: 1px solid var(--border);
+}
+
+.search-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background-color: var(--surface);
+  color: var(--ink);
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+}
+
+.search-input::placeholder {
+  color: var(--muted);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
 .type-filter-bar {
   border-bottom: 1px solid var(--border);
 }

@@ -21,6 +21,8 @@ const messages = {
     empty: '暂无漫画。',
     noCover: '无封面',
     coverAlt: '《{title}》封面',
+    searchPlaceholder: '搜索标题或标签',
+    searchLabel: '搜索漫画',
   },
   viewer: {
     backToList: '返回列表',

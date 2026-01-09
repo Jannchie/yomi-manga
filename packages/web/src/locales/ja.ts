@@ -21,6 +21,8 @@ const messages = {
     empty: 'まだ漫画がありません。',
     noCover: '表紙なし',
     coverAlt: '「{title}」の表紙',
+    searchPlaceholder: 'タイトルまたはタグで検索',
+    searchLabel: '漫画を検索',
   },
   viewer: {
     backToList: '一覧に戻る',

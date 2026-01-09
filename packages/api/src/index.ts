@@ -1,8 +1,9 @@
+import type { SQL } from 'drizzle-orm'
 import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 
+import path from 'node:path'
 import { serve } from '@hono/node-server'
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createIPX, ipxFSStorage } from 'ipx'
@@ -46,9 +47,12 @@ app.get('/manga', (c) => {
   const pageParam = c.req.query('page')
   const pageSizeParam = c.req.query('pageSize')
   const typeParam = c.req.query('type')
+  const searchParam = c.req.query('q')
   const page = pageParam ? Number(pageParam) : 1
   const pageSize = pageSizeParam ? Number(pageSizeParam) : 12
   const normalizedType = normalizeQueryValue(typeParam)
+  const normalizedSearch = normalizeQueryValue(searchParam)
+  const whereClause = buildMangaWhere(normalizedType, normalizedSearch)
 
   if (!Number.isInteger(page) || page < 1) {
     return c.json({ error: 'invalid_page' }, 400)
@@ -58,11 +62,11 @@ app.get('/manga', (c) => {
     return c.json({ error: 'invalid_page_size' }, 400)
   }
 
-  const totalRow = (normalizedType
+  const totalRow = (whereClause
     ? db
         .select({ count: sql<number>`count(*)` })
         .from(mangaMeta)
-        .where(eq(mangaMeta.type, normalizedType))
+        .where(whereClause)
     : db
         .select({ count: sql<number>`count(*)` })
         .from(mangaMeta))
@@ -83,9 +87,7 @@ app.get('/manga', (c) => {
       desc(mangaMeta.publishedAt),
       desc(mangaMeta.id),
     )
-  const metaRows = (normalizedType
-    ? baseMetaQuery.where(eq(mangaMeta.type, normalizedType))
-    : baseMetaQuery)
+  const metaRows = (whereClause ? baseMetaQuery.where(whereClause) : baseMetaQuery)
     .limit(pageSize)
     .offset((page - 1) * pageSize)
     .all() as Array<{
@@ -587,6 +589,37 @@ function normalizeRating(value: unknown): number | null | undefined {
   }
 
   return rounded
+}
+
+function buildMangaWhere(
+  type: string | null,
+  search: string | null,
+): SQL | undefined {
+  const conditions: SQL[] = []
+  if (type) {
+    conditions.push(eq(mangaMeta.type, type))
+  }
+
+  if (search) {
+    const pattern = `%${search}%`
+    const searchCondition = or(
+      sql`${mangaMeta.title} LIKE ${pattern}`,
+      sql`COALESCE(${mangaMeta.tags}, '') LIKE ${pattern}`,
+    )
+    if (searchCondition) {
+      conditions.push(searchCondition)
+    }
+  }
+
+  if (conditions.length === 0) {
+    return undefined
+  }
+
+  if (conditions.length === 1) {
+    return conditions[0]
+  }
+
+  return and(...conditions)
 }
 
 function normalizeQueryValue(value: string | undefined): string | null {

@@ -21,6 +21,8 @@ const messages = {
     empty: 'No manga yet.',
     noCover: 'No cover',
     coverAlt: '{title} cover',
+    searchPlaceholder: 'Search title or tag',
+    searchLabel: 'Search manga',
   },
   viewer: {
     backToList: 'Back to list',

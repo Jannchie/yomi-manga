@@ -70,6 +70,7 @@ export async function fetchMangaPage(
   page: number,
   pageSize: number,
   type?: string | null,
+  search?: string | null,
 ): Promise<Paginated<MangaListItem>> {
   const params = new URLSearchParams({
     page: String(page),
@@ -77,6 +78,9 @@ export async function fetchMangaPage(
   })
   if (type) {
     params.set('type', type)
+  }
+  if (search) {
+    params.set('q', search)
   }
   return fetchJson(`/manga?${params.toString()}`)
 }
