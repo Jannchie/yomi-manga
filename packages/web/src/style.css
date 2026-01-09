@@ -107,6 +107,10 @@ img {
   gap: 0;
 }
 
+.type-filter-row--bordered .type-filter-btn:first-child {
+  border-left: 1px solid var(--border);
+}
+
 .search-bar {
   border-bottom: 1px solid var(--border);
 }
@@ -181,6 +185,8 @@ img {
   flex-wrap: wrap;
   column-gap: var(--grid-gap-x);
   row-gap: var(--grid-gap-y);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
   background-image:
     repeating-linear-gradient(
       to right,

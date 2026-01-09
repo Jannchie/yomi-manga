@@ -3,6 +3,7 @@ const messages = {
     all: 'All',
     category: 'Category',
     manga: 'Manga',
+    tags: 'Tags',
   },
   categories: {
     AI_ARTBOOK: 'AI Art',

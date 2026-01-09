@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { MangaPage } from '../lib/api'
-
 import { useDebounceFn } from '@vueuse/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -40,19 +39,20 @@ const waterfallItems = computed(() =>
     }
   }),
 )
-const mangaMetaLine = computed(() => {
-  const parts: string[] = []
-  if (mangaType.value) {
-    const trimmed = mangaType.value.trim()
-    if (trimmed) {
-      parts.push(typeLabel(trimmed))
-    }
+const mangaTypeLabel = computed(() => {
+  if (!mangaType.value) {
+    return null
   }
-  if (mangaTags.value && mangaTags.value.length > 0) {
-    const tags = mangaTags.value.map(tag => tag.trim()).filter(Boolean)
-    parts.push(...tags)
+
+  const trimmed = mangaType.value.trim()
+  return trimmed ? typeLabel(trimmed) : null
+})
+const mangaTagsList = computed(() => {
+  if (!mangaTags.value || mangaTags.value.length === 0) {
+    return []
   }
-  return parts.length > 0 ? parts.join(' · ') : null
+
+  return mangaTags.value.map(tag => tag.trim()).filter(Boolean)
 })
 const errorMessage = computed(() => {
   if (!error.value) {
@@ -234,6 +234,15 @@ function markPageLoaded(id: number): void {
   loadedPages.value = { ...loadedPages.value, [id]: true }
 }
 
+function navigateToTag(tag: string): void {
+  void router.push({
+    path: '/',
+    query: {
+      q: tag,
+    },
+  })
+}
+
 async function updateRating(nextRating: number | null): Promise<void> {
   if (ratingUpdating.value || nextRating === mangaRating.value) {
     return
@@ -266,8 +275,8 @@ async function updateRating(nextRating: number | null): Promise<void> {
 <template>
   <section>
     <div>
-      <div class="viewer-header flex flex-col sm:flex-row sm:items-end sm:justify-between pb-2">
-        <div class="viewer-meta">
+      <div class="viewer-header flex flex-col sm:flex-row sm:items-end sm:justify-between border-b border-(--border)">
+        <div class="w-full children:pl-2">
           <RouterLink
             class="text-xs uppercase tracking-[0.2em] text-(--muted)"
             to="/"
@@ -324,21 +333,48 @@ async function updateRating(nextRating: number | null): Promise<void> {
           >
             {{ ratingError }}
           </p>
-          <p
-            v-if="loading"
-            class="mt-1 text-xs text-(--muted)"
-          >
-            <span
-              class="skeleton skeleton-line"
-              aria-hidden="true"
-            />
-          </p>
-          <p
-            v-else-if="mangaMetaLine"
-            class="mt-1 line-clamp-1 text-xs text-(--muted)"
-          >
-            {{ mangaMetaLine }}
-          </p>
+          <template v-if="loading">
+            <div class="text-xs text-(--muted) flex flex-col">
+              <div class="skeleton-lines my-1">
+                <span
+                  class="skeleton skeleton-line"
+                  aria-hidden="true"
+                />
+                <span
+                  class="skeleton skeleton-line"
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div
+              v-if="mangaTypeLabel"
+              class=" text-xs text-(--muted) flex flex-col border-b border-[--border]"
+            >
+              <p class="my-1">
+                {{ t('common.category') }}: {{ mangaTypeLabel }}
+              </p>
+            </div>
+            <div
+              v-if="mangaTagsList.length > 0"
+              class="text-xs text-(--muted) flex flex-col"
+            >
+              <div class="flex flex-wrap items-center">
+                <div class="type-filter-row type-filter-row--bordered flex flex-wrap">
+                  <button
+                    v-for="tag in mangaTagsList"
+                    :key="tag"
+                    type="button"
+                    class="type-filter-btn px-3 py-1.5 text-xs"
+                    @click="navigateToTag(tag)"
+                  >
+                    {{ tag }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
