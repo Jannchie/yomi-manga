@@ -6,6 +6,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import AuxlineBtn from '../components/auxline/Btn.vue'
 import PaginationBar from '../components/PaginationBar.vue'
 import StarRating from '../components/StarRating.vue'
 import { buildImageUrl, fetchMangaPage, fetchMangaTypes } from '../lib/api'
@@ -35,6 +36,8 @@ const gridGapX = 16
 const gridGapY = 16
 const gridMetaHeight = 64
 const coverAspectRatio = 1.5
+const typeFilterBaseClass = 'type-filter-btn px-3 py-1.5 text-xs !h-auto !leading-4 !normal-case !tracking-normal !font-sans !text-(--muted) hover:!bg-(--muted) hover:!text-(--surface)'
+const typeFilterActiveClass = 'type-filter-btn--active !bg-(--ink) !text-(--surface) hover:!bg-(--ink) hover:!text-(--surface)'
 
 function updateDocumentTitle(): void {
   if (typeof document === 'undefined') {
@@ -436,27 +439,25 @@ function scrollToTop(): void {
       >
     </div>
     <div class="type-filter-bar flex flex-col sm:flex-row sm:items-center">
-      <div class="type-filter-row flex flex-wrap">
-        <button
+      <div class="type-filter-row flex flex-wrap children:border-r">
+        <AuxlineBtn
           type="button"
-          class="type-filter-btn px-3 py-1.5 text-xs"
-          :class="selectedType === null ? 'type-filter-btn--active' : ''"
+          size="sm"
           :aria-pressed="selectedType === null"
           @click="selectType(null)"
         >
           {{ t('common.all') }}
-        </button>
-        <button
+        </AuxlineBtn>
+        <AuxlineBtn
           v-for="type in types"
           :key="type"
           type="button"
-          class="type-filter-btn px-3 py-1.5 text-xs"
-          :class="selectedType === type ? 'type-filter-btn--active' : ''"
+          size="sm"
           :aria-pressed="selectedType === type"
           @click="selectType(type)"
         >
           {{ typeLabel(type) }}
-        </button>
+        </AuxlineBtn>
       </div>
     </div>
     <div

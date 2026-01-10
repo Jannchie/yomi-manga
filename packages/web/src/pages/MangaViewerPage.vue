@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { Waterfall } from 'vue-wf'
 
+import AuxlineBtn from '../components/auxline/Btn.vue'
 import StarRating from '../components/StarRating.vue'
 import { buildImageUrl, fetchMangaMeta, fetchMangaPages, updateMangaRating } from '../lib/api'
 
@@ -26,6 +27,7 @@ const currentOffset = ref<number | null>(null)
 const loadedPages = ref<Record<number, boolean>>({})
 const ratingUpdating = ref(false)
 const ratingError = ref<string | null>(null)
+const tagButtonClass = 'type-filter-btn px-3 py-1.5 text-xs !h-auto !leading-4 !normal-case !tracking-normal !font-sans !text-(--muted) hover:!bg-(--muted) hover:!text-(--surface)'
 
 const HASH_PREFIX = '#y='
 let isActive = true
@@ -378,15 +380,16 @@ async function updateRating(nextRating: number | null): Promise<void> {
             >
               <div class="flex flex-wrap items-center">
                 <div class="type-filter-row type-filter-row--bordered flex flex-wrap">
-                  <button
+                  <AuxlineBtn
                     v-for="tag in mangaTagsList"
                     :key="tag"
                     type="button"
-                    class="type-filter-btn px-3 py-1.5 text-xs"
+                    size="sm"
+                    :class="tagButtonClass"
                     @click="navigateToTag(tag)"
                   >
                     {{ tag }}
-                  </button>
+                  </AuxlineBtn>
                 </div>
               </div>
             </div>

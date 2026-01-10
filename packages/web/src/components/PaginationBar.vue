@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import AuxlineBtn from './auxline/Btn.vue'
+
 interface PaginationProps {
   page: number
   totalPages: number
@@ -95,14 +97,14 @@ function goTo(target: number): void {
     class="pagination-bar flex flex-wrap items-center justify-center"
     :aria-label="t('pagination.label')"
   >
-    <button
+    <AuxlineBtn
       type="button"
       class="pagination-btn"
       :disabled="previousDisabled"
       @click="goTo(current - 1)"
     >
       {{ t('pagination.prev') }}
-    </button>
+    </AuxlineBtn>
 
     <div class="flex items-center">
       <template
@@ -115,28 +117,29 @@ function goTo(target: number): void {
         >
           ...
         </span>
-        <button
+        <AuxlineBtn
           v-else
           type="button"
           class="pagination-btn"
           :class="item === current ? 'pagination-btn--active' : ''"
+          :active="item === current"
           :aria-current="item === current ? 'page' : undefined"
           :disabled="isDisabled"
           @click="goTo(item)"
         >
           {{ item }}
-        </button>
+        </AuxlineBtn>
       </template>
     </div>
 
-    <button
+    <AuxlineBtn
       type="button"
       class="pagination-btn"
       :disabled="nextDisabled"
       @click="goTo(current + 1)"
     >
       {{ t('pagination.next') }}
-    </button>
+    </AuxlineBtn>
   </nav>
 </template>
 
@@ -149,39 +152,43 @@ function goTo(target: number): void {
 }
 
 .pagination-btn {
-  border: 0;
-  border-right: 1px solid var(--border);
-  border-radius: 0;
-  padding: 0.35rem 0.85rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  background-color: transparent;
-  color: var(--muted);
+  border: 0 !important;
+  border-right: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  height: auto !important;
+  padding: 0.35rem 0.85rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  background-color: transparent !important;
+  color: var(--muted) !important;
+  font-family: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
   transition: background-color 150ms ease, color 150ms ease;
 }
 
 .pagination-bar > .pagination-btn:first-child {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border) !important;
 }
 
 .pagination-btn:not(:disabled):not(.pagination-btn--active):hover {
-  background-color: var(--muted);
-  color: var(--surface);
+  background-color: var(--muted) !important;
+  color: var(--surface) !important;
 }
 
 .pagination-btn:not(:disabled):active {
-  background-color: var(--ink);
-  color: var(--surface);
+  background-color: var(--ink) !important;
+  color: var(--surface) !important;
 }
 
 .pagination-btn:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.5 !important;
 }
 
 .pagination-btn--active {
-  background-color: var(--ink);
-  color: var(--surface);
+  background-color: var(--ink) !important;
+  color: var(--surface) !important;
 }
 
 .pagination-ellipsis {

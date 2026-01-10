@@ -5,10 +5,21 @@ import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink, RouterView } from 'vue-router'
 
+import AuxlineRoot from './components/auxline/Root.vue'
 import { isLocale, localeStorageKey } from './i18n'
 
 const { locale, t } = useI18n()
 const mainClass = 'mx-auto max-w-6xl w-full'
+const auxlineStyle: Record<string, string> = {
+  '--auxline-bg': 'var(--bg)',
+  '--auxline-bg-emphasis': 'var(--surface)',
+  '--auxline-bg-hover': 'var(--surface-muted)',
+  '--auxline-bg-contrast': 'var(--ink)',
+  '--auxline-fg': 'var(--ink)',
+  '--auxline-fg-muted': 'var(--muted)',
+  '--auxline-fg-contrast': 'var(--surface)',
+  '--auxline-line': 'var(--border)',
+}
 
 const localeOptions = computed(() => [
   { value: 'en', label: t('locale.english') },
@@ -48,8 +59,8 @@ watch(
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col">
-    <header class="app-header">
+  <AuxlineRoot class="app-shell" :style="auxlineStyle">
+    <template #header>
       <div class="content-frame mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <RouterLink
           class="text-lg font-semibold tracking-tight"
@@ -76,12 +87,14 @@ watch(
           </select>
         </div>
       </div>
-    </header>
-    <main
-      class="content-frame flex-1"
-      :class="[mainClass]"
-    >
-      <RouterView />
-    </main>
-  </div>
+    </template>
+    <template #main>
+      <div
+        class="content-frame flex-1"
+        :class="[mainClass]"
+      >
+        <RouterView />
+      </div>
+    </template>
+  </AuxlineRoot>
 </template>
