@@ -50,6 +50,11 @@ const messages = {
     loadManga: '漫画の読み込みに失敗しました',
     invalidMangaId: '無効な漫画IDです',
   },
+  meta: {
+    listTitle: 'Yomi Manga - マンガライブラリー',
+    viewerTitle: 'Yomi Manga - {title}',
+    viewerTitleFallback: 'Yomi Manga - ビューアー',
+  },
   locale: {
     label: '言語',
     english: '英語',

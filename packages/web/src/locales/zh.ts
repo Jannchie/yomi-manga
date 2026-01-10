@@ -50,6 +50,11 @@ const messages = {
     loadManga: '加载漫画失败',
     invalidMangaId: '无效的漫画 ID',
   },
+  meta: {
+    listTitle: 'Yomi 漫画 - 私人漫画库',
+    viewerTitle: 'Yomi 漫画 - {title}',
+    viewerTitleFallback: 'Yomi 漫画 - 阅读器',
+  },
   locale: {
     label: '语言',
     english: '英文',

@@ -13,7 +13,7 @@ type ErrorState = { message: string } | { key: 'invalidMangaId' | 'loadManga' }
 
 const route = useRoute()
 const router = useRouter()
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const pages = ref<MangaPage[]>([])
 const mangaTitle = ref<string | null>(null)
 const mangaTags = ref<string[] | null>(null)
@@ -85,6 +85,20 @@ const ratingLabel = computed(() => {
 const ratingDisabled = computed(
   () => loading.value || ratingUpdating.value || error.value !== null,
 )
+
+function updateDocumentTitle(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  const resolvedTitle = mangaTitle.value?.trim()
+  if (resolvedTitle) {
+    document.title = t('meta.viewerTitle', { title: resolvedTitle })
+    return
+  }
+
+  document.title = t('meta.viewerTitleFallback')
+}
 
 async function load(): Promise<void> {
   const mangaId = Number(route.params.id)
@@ -159,6 +173,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', scheduleAnchorUpdate)
   window.removeEventListener('resize', scheduleAnchorUpdate)
 })
+
+watch([locale, mangaTitle], updateDocumentTitle, { immediate: true })
 
 watch(
   () => route.params.id,

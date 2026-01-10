@@ -14,7 +14,7 @@ type ErrorState = { message: string } | { key: 'loadManga' }
 
 const route = useRoute()
 const router = useRouter()
-const { t, te } = useI18n()
+const { t, te, locale } = useI18n()
 const page = ref(parsePage(route.query.page) ?? 1)
 const pageSize = 12
 const placeholderItems = Array.from({ length: pageSize }, (_, index) => index)
@@ -35,6 +35,14 @@ const gridGapX = 16
 const gridGapY = 16
 const gridMetaHeight = 64
 const coverAspectRatio = 1.5
+
+function updateDocumentTitle(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.title = t('meta.listTitle')
+}
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const errorMessage = computed(() => {
@@ -145,6 +153,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   globalThis.window.removeEventListener('resize', updateColumns)
 })
+
+watch(locale, updateDocumentTitle, { immediate: true })
 
 const commitSearch = useDebounceFn(() => {
   const nextSearch = normalizeSearch(searchInput.value)
