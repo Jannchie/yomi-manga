@@ -444,6 +444,7 @@ function scrollToTop(): void {
           type="button"
           size="sm"
           :aria-pressed="selectedType === null"
+          :variant="selectedType === null ? 'contrast' : 'solid'"
           @click="selectType(null)"
         >
           {{ t('common.all') }}
@@ -454,6 +455,7 @@ function scrollToTop(): void {
           type="button"
           size="sm"
           :aria-pressed="selectedType === type"
+          :variant="selectedType === type ? 'contrast' : 'solid'"
           @click="selectType(type)"
         >
           {{ typeLabel(type) }}

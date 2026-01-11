@@ -2,6 +2,10 @@
 
 Monorepo for the Yomi Manga application. It includes a Hono-based API and a Vue 3 web client, managed with pnpm workspaces.
 
+## Purpose
+
+Yomi Manga is a self-hosted manga library and reader. It scans a media library, serves metadata and images through the API, and provides a web UI for browsing, searching, and reading series.
+
 ## Requirements
 
 - Node.js (LTS recommended)
