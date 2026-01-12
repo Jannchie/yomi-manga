@@ -36,8 +36,6 @@ const gridGapX = 16
 const gridGapY = 16
 const gridMetaHeight = 64
 const coverAspectRatio = 1.5
-const typeFilterBaseClass = 'type-filter-btn px-3 py-1.5 text-xs !h-auto !leading-4 !normal-case !tracking-normal !font-sans !text-(--muted) hover:!bg-(--muted) hover:!text-(--surface)'
-const typeFilterActiveClass = 'type-filter-btn--active !bg-(--ink) !text-(--surface) hover:!bg-(--ink) hover:!text-(--surface)'
 
 function updateDocumentTitle(): void {
   if (typeof document === 'undefined') {
