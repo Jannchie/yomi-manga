@@ -3,7 +3,7 @@ import type { Dirent } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { imageSizeFromFile } from 'image-size/fromFile'
 
 import { db } from '../db.js'
@@ -14,6 +14,7 @@ type MangaMetaPayload = Record<string, unknown>
 interface SyncOptions {
   root: string
   prune: boolean
+  fast: boolean
 }
 
 interface MangaEntry {
@@ -32,6 +33,11 @@ interface MangaEntry {
   }>
 }
 
+interface ExistingPageSize {
+  width: number | null
+  height: number | null
+  ratio: number | null
+}
 const IMAGE_EXTENSIONS = new Set([
   '.avif',
   '.bmp',
@@ -88,10 +94,29 @@ async function run(options: SyncOptions): Promise<void> {
     .toSorted((a, b) => collator.compare(a, b))
 
   const processedSlugs: string[] = []
+  const existingPageCounts = loadExistingPageCounts()
 
   for (const dirName of directories) {
     const dirPath = path.resolve(options.root, dirName)
-    const entry = await scanManga(options.root, dirPath)
+    const slug = normalizeRelative(options.root, dirPath)
+    const { files, imageNames } = await readMangaDirectory(dirPath)
+    const existingPageCount = existingPageCounts.get(slug)
+    if (existingPageCount !== undefined && existingPageCount === imageNames.length) {
+      processedSlugs.push(slug)
+      console.info(`Skipped ${slug} (page count unchanged: ${imageNames.length})`)
+      continue
+    }
+
+    const existingSizes = options.fast ? loadExistingPageSizes(slug) : null
+    const sortedImageNames = imageNames.toSorted((a, b) => collator.compare(a, b))
+    const entry = await scanManga(
+      options.root,
+      dirPath,
+      slug,
+      existingSizes,
+      files,
+      sortedImageNames,
+    )
     processedSlugs.push(entry.slug)
     await upsertManga(entry)
     console.info(`Synced ${entry.slug} (${entry.pages.length} pages)`)
@@ -104,13 +129,16 @@ async function run(options: SyncOptions): Promise<void> {
   console.info(`Sync finished: ${processedSlugs.length} manga processed.`)
 }
 
-async function scanManga(root: string, dirPath: string): Promise<MangaEntry> {
-  const entries = await readdir(dirPath, { withFileTypes: true })
-  const files = entries.filter(entry => entry.isFile()).map(entry => entry.name)
-
+async function scanManga(
+  root: string,
+  dirPath: string,
+  slug: string,
+  existingSizes: Map<string, ExistingPageSize> | null,
+  files: string[],
+  imageNames: string[],
+): Promise<MangaEntry> {
   const metaFile = pickMetaFile(files)
   const meta = await readMetaFile(dirPath, metaFile)
-  const slug = normalizeRelative(root, dirPath)
   const title = pickTitle(meta, slug)
   const type = meta
     ? getString(meta, 'category') ?? getString(meta, 'type')
@@ -119,21 +147,25 @@ async function scanManga(root: string, dirPath: string): Promise<MangaEntry> {
   const metaJson = meta ? JSON.stringify(meta) : null
   const publishedAt = meta ? pickPublishedAt(meta) : null
 
-  const imageNames = files
-    .filter(name => IMAGE_EXTENSIONS.has(path.extname(name).toLowerCase()))
-    .toSorted((a, b) => collator.compare(a, b))
-
   const pages = []
   for (const [index, name] of imageNames.entries()) {
     const absolutePath = path.resolve(dirPath, name)
     const relativePath = normalizeRelative(root, absolutePath)
-    const size = await readImageSize(absolutePath)
-    const width = size?.width ?? null
-    const height = size?.height ?? null
-    const ratio
-      = typeof width === 'number' && typeof height === 'number' && height > 0
-        ? width / height
-        : null
+    const existingSize = existingSizes?.get(relativePath)
+    let width = existingSize?.width ?? null
+    let height = existingSize?.height ?? null
+    let ratio = existingSize?.ratio ?? null
+    const hasDimensions = typeof width === 'number' && typeof height === 'number'
+
+    if (!hasDimensions) {
+      const size = await readImageSize(absolutePath)
+      width = size?.width ?? null
+      height = size?.height ?? null
+    }
+
+    if (typeof width === 'number' && typeof height === 'number' && height > 0) {
+      ratio = ratio ?? width / height
+    }
 
     pages.push({
       path: relativePath,
@@ -190,6 +222,17 @@ async function readMetaFile(dirPath: string, metaFile: string | null): Promise<M
     console.warn(error)
     return null
   }
+}
+
+async function readMangaDirectory(
+  dirPath: string,
+): Promise<{ files: string[], imageNames: string[] }> {
+  const entries = await readdir(dirPath, { withFileTypes: true })
+  const files = entries.filter(entry => entry.isFile()).map(entry => entry.name)
+  const imageNames = files
+    .filter(name => IMAGE_EXTENSIONS.has(path.extname(name).toLowerCase()))
+
+  return { files, imageNames }
 }
 
 function pickTitle(meta: MangaMetaPayload | null, fallback: string): string {
@@ -424,6 +467,52 @@ async function upsertManga(entry: MangaEntry): Promise<void> {
   }
 }
 
+function loadExistingPageCounts(): Map<string, number> {
+  const rows = db
+    .select({
+      slug: mangaMeta.slug,
+      count: sql<number>`count(${mangaData.id})`,
+    })
+    .from(mangaMeta)
+    .leftJoin(mangaData, eq(mangaMeta.id, mangaData.mangaId))
+    .groupBy(mangaMeta.slug)
+    .all() as Array<{ slug: string, count: number }>
+
+  const map = new Map<string, number>()
+  for (const row of rows) {
+    map.set(row.slug, row.count)
+  }
+  return map
+}
+
+function loadExistingPageSizes(slug: string): Map<string, ExistingPageSize> {
+  const existing = db
+    .select({ id: mangaMeta.id })
+    .from(mangaMeta)
+    .where(eq(mangaMeta.slug, slug))
+    .all()[0]
+  if (!existing) {
+    return new Map()
+  }
+
+  const rows = db
+    .select({
+      path: mangaData.path,
+      width: mangaData.width,
+      height: mangaData.height,
+      ratio: mangaData.ratio,
+    })
+    .from(mangaData)
+    .where(eq(mangaData.mangaId, existing.id))
+    .all() as Array<{ path: string, width: number | null, height: number | null, ratio: number | null }>
+
+  const map = new Map<string, ExistingPageSize>()
+  for (const row of rows) {
+    map.set(row.path, { width: row.width, height: row.height, ratio: row.ratio })
+  }
+  return map
+}
+
 async function pruneManga(activeSlugs: string[]): Promise<void> {
   const existing = db
     .select({ slug: mangaMeta.slug, id: mangaMeta.id })
@@ -455,6 +544,7 @@ function parseArgs(args: string[]): SyncOptions | null {
   return {
     root,
     prune: args.includes('--prune'),
+    fast: !args.includes('--no-fast'),
   }
 }
 
@@ -474,5 +564,5 @@ function readArgValue(args: string[], key: string): string | null {
 }
 
 function printUsage(): void {
-  console.info('Usage: pnpm --filter @yomi-manga/api sync [--root <dir>] [--prune]')
+  console.info('Usage: pnpm --filter @yomi-manga/api sync [--root <dir>] [--prune] [--no-fast]')
 }
