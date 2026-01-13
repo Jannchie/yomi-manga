@@ -14,36 +14,27 @@ COPY packages/web/package.json packages/web/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM base AS build
-ARG VITE_API_BASE=http://localhost:4347
+ARG VITE_API_BASE=/api
 ENV VITE_API_BASE=$VITE_API_BASE
 COPY --from=deps /pnpm /pnpm
 COPY --from=deps /app/node_modules /app/node_modules
+COPY --from=deps /app/packages/api/node_modules /app/packages/api/node_modules
+COPY --from=deps /app/packages/web/node_modules /app/packages/web/node_modules
 COPY . .
 RUN pnpm build
+RUN pnpm prune --prod
 
-FROM node:20-alpine AS api
+FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache nginx supervisor
 COPY --from=build /pnpm /pnpm
 COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/packages/api/node_modules /app/packages/api/node_modules
 COPY --from=build /app/packages/api/dist /app/packages/api/dist
 COPY packages/api/package.json packages/api/package.json
-EXPOSE 4347
-CMD ["node", "packages/api/dist/index.js"]
-
-FROM nginx:stable-alpine AS web
-WORKDIR /usr/share/nginx/html
-RUN cat <<'EOF' > /etc/nginx/conf.d/default.conf
-server {
-  listen 80;
-  server_name _;
-  root /usr/share/nginx/html;
-  index index.html;
-
-  location / {
-    try_files $uri /index.html;
-  }
-}
-EOF
-COPY --from=build /app/packages/web/dist ./
+COPY --from=build /app/packages/web/dist /usr/share/nginx/html
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/supervisord.conf /etc/supervisord.conf
 EXPOSE 80
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]

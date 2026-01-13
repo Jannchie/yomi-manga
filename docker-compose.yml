@@ -1,0 +1,14 @@
+services:
+  app:
+    image: jannchie/yomi:latest
+    container_name: yomi
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    environment:
+      DATABASE_URL: /data/db/data.db
+      MANGA_ROOT: /data/manga
+      IMAGE_MAX_AGE: '3600'
+    volumes:
+      - /srv/yomi/db:/data/db
+      - /srv/yomi/manga:/data/manga

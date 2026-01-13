@@ -15,7 +15,7 @@ const app = new Hono()
 
 const mediaRoot = path.resolve(
   process.cwd(),
-  process.env.MANGA_ROOT ?? process.env.MEDIA_ROOT ?? '/mnt/nas/h-manga',
+  process.env.MANGA_ROOT ?? process.env.MEDIA_ROOT ?? 'manga',
 )
 const imageMaxAge = Number(process.env.IMAGE_MAX_AGE ?? 3600)
 const resolvedImageMaxAge = Number.isFinite(imageMaxAge) && imageMaxAge > 0
