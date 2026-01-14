@@ -29,6 +29,22 @@ pnpm preview    # Preview the web build
 pnpm sync       # Run API sync script
 ```
 
+## Media Directory (Manga Files)
+
+Set the manga library directory with `MANGA_ROOT` (absolute or relative to the API working directory).
+
+```bash
+export MANGA_ROOT=/path/to/manga
+pnpm dev:api
+pnpm sync
+```
+
+You can also override the sync root per run:
+
+```bash
+pnpm sync -- --root /path/to/manga
+```
+
 ## Docker
 
 Build the API image:

@@ -38,4 +38,8 @@ pnpm sync       # Run API sync script
 ## Configuration & Data
 
 - The API uses a local SQLite database at `packages/api/data.db`; treat it as local state unless you intend to update shared data.
-- Media root can be configured via `MANGA_ROOT` or `MEDIA_ROOT`; `IMAGE_MAX_AGE` controls cache headers.
+- Media root can be configured via `MANGA_ROOT`; `IMAGE_MAX_AGE` controls cache headers.
+
+## Changelog
+
+Changelogs are maintained in `CHANGELOG.md` using Keep a Changelog format. Update it with each release, following semantic versioning. You must use Chinese.

@@ -538,7 +538,7 @@ function parseArgs(args: string[]): SyncOptions | null {
   }
 
   const rootArg = readArgValue(args, '--root') ?? readArgValue(args, '-r')
-  const rootFromEnv = process.env.MANGA_ROOT ?? process.env.MEDIA_ROOT ?? 'assets'
+  const rootFromEnv = process.env.MANGA_ROOT ?? 'assets'
   const root = path.resolve(process.cwd(), rootArg ?? rootFromEnv)
 
   return {

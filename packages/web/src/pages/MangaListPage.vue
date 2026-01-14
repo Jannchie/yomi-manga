@@ -101,6 +101,7 @@ function coverImageUrl(path: string, scale = 1): string {
     height,
     fit: 'cover',
     format: 'auto',
+    quality: 75,
   })
 }
 

@@ -10,7 +10,8 @@
     "build": "pnpm -r build",
     "lint": "eslint .",
     "preview": "pnpm --filter ./packages/web preview",
-    "sync": "pnpm --filter ./packages/api sync"
+    "sync": "pnpm --filter ./packages/api sync",
+    "docker:build-push": "bash ./scripts/docker-build-push.sh"
   },
   "devDependencies": {
     "@jannchie/eslint-config": "^3.7.5",

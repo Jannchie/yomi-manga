@@ -11,16 +11,57 @@ import { createIPX, ipxFSStorage } from 'ipx'
 import { db } from './db.js'
 import { mangaData, mangaMeta } from './schema.js'
 
+class AsyncLimiter {
+  private active = 0
+  private queue: Array<() => void> = []
+
+  constructor(private readonly limit: number) {}
+
+  async run<T>(task: () => Promise<T>): Promise<T> {
+    await this.acquire()
+    try {
+      return await task()
+    }
+    finally {
+      this.release()
+    }
+  }
+
+  private async acquire(): Promise<void> {
+    if (this.active < this.limit) {
+      this.active += 1
+      return
+    }
+
+    await new Promise<void>((resolve) => {
+      this.queue.push(resolve)
+    })
+    this.active += 1
+  }
+
+  private release(): void {
+    this.active = Math.max(0, this.active - 1)
+    const next = this.queue.shift()
+    if (next) {
+      next()
+    }
+  }
+}
+
 const app = new Hono()
 
 const mediaRoot = path.resolve(
   process.cwd(),
-  process.env.MANGA_ROOT ?? process.env.MEDIA_ROOT ?? 'manga',
+  process.env.MANGA_ROOT ?? 'manga',
 )
 const imageMaxAge = Number(process.env.IMAGE_MAX_AGE ?? 3600)
 const resolvedImageMaxAge = Number.isFinite(imageMaxAge) && imageMaxAge > 0
   ? imageMaxAge
   : 3600
+const imageConcurrency = Number(process.env.IMAGE_MAX_CONCURRENCY ?? 2)
+const resolvedImageConcurrency = Number.isFinite(imageConcurrency)
+  ? Math.max(1, Math.floor(imageConcurrency))
+  : 2
 const ipx = createIPX({
   maxAge: resolvedImageMaxAge,
   storage: ipxFSStorage({
@@ -31,6 +72,7 @@ const ipx = createIPX({
 const safeMediaRoot = mediaRoot.endsWith(path.sep)
   ? mediaRoot
   : `${mediaRoot}${path.sep}`
+const imageProcessLimiter = new AsyncLimiter(resolvedImageConcurrency)
 
 app.use(
   '*',
@@ -356,7 +398,7 @@ app.get('/image', async (c) => {
       }
     }
 
-    const { data, format } = await img.process()
+    const { data, format } = await imageProcessLimiter.run(() => img.process())
     const headers: Record<string, string> = {
       'Cache-Control': `public, max-age=${sourceMeta.maxAge ?? resolvedImageMaxAge}`,
       'Content-Type': format ? `image/${format}` : contentType(normalizedPath),
@@ -483,9 +525,6 @@ function parseFit(value?: string): string | null {
 
 function detectAutoFormat(acceptHeader?: string): string {
   const accept = acceptHeader?.toLowerCase() ?? ''
-  if (accept.includes('image/avif')) {
-    return 'avif'
-  }
   if (accept.includes('image/webp')) {
     return 'webp'
   }
