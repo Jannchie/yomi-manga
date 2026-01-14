@@ -10,20 +10,20 @@
   },
   "dependencies": {
     "@vueuse/core": "^14.1.0",
-    "vue": "^3.5.24",
+    "vue": "^3.5.26",
     "vue-i18n": "^11.2.8",
     "vue-router": "^4.6.4",
-    "vue-wf": "^0.8.1"
+    "vue-wf": "^0.8.2"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "@unocss/preset-wind4": "^66.5.12",
-    "@unocss/reset": "^66.5.12",
-    "@vitejs/plugin-vue": "^6.0.1",
+    "@types/node": "^25.0.8",
+    "@unocss/preset-wind4": "^66.6.0",
+    "@unocss/reset": "^66.6.0",
+    "@vitejs/plugin-vue": "^6.0.3",
     "@vue/tsconfig": "^0.8.1",
     "typescript": "~5.9.3",
-    "unocss": "^66.5.12",
+    "unocss": "^66.6.0",
     "vite": "^7.3.1",
-    "vue-tsc": "^3.1.4"
+    "vue-tsc": "^3.2.2"
   }
 }
