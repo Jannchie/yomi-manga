@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 
 type AuxlineBtnVariant = 'solid' | 'contrast'
 type AuxlineBtnSize = 'sm' | 'md' | 'lg'
@@ -49,7 +50,7 @@ const classList = computed(() => [
 </script>
 
 <template>
-  <NuxtLink
+  <RouterLink
     v-if="props.to"
     :to="props.to"
     :aria-busy="props.loading ? 'true' : undefined"
@@ -58,7 +59,7 @@ const classList = computed(() => [
     :class="classList"
   >
     <slot />
-  </NuxtLink>
+  </RouterLink>
   <button
     v-else
     :type="props.type"

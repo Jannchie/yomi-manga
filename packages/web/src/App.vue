@@ -59,7 +59,10 @@ watch(
 </script>
 
 <template>
-  <AuxlineRoot class="app-shell" :style="auxlineStyle">
+  <AuxlineRoot
+    class="app-shell"
+    :style="auxlineStyle"
+  >
     <template #header>
       <div class="content-frame mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <RouterLink

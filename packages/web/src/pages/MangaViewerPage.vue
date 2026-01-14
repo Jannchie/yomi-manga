@@ -161,7 +161,14 @@ const scheduleAnchorUpdate = useDebounceFn(() => {
     return
   }
 
-  const offset = Math.max(0, Math.round(window.scrollY))
+  // iOS Safari compatibility: use documentElement.scrollTop as fallback
+  const offset = Math.max(0, Math.round(
+    window.scrollY
+    || window.pageYOffset
+    || document.documentElement.scrollTop
+    || document.body.scrollTop
+    || 0,
+  ))
   if (currentOffset.value !== offset) {
     currentOffset.value = offset
     updateHash(offset)
@@ -222,8 +229,23 @@ async function scrollToHash(hash: string): Promise<void> {
     return
   }
 
-  window.scrollTo({ top: offset, behavior: 'auto' })
-  currentOffset.value = offset
+  // iOS Safari compatibility: use setTimeout and multiple scroll methods
+  await nextTick()
+  setTimeout(() => {
+    // Try multiple scroll methods for maximum compatibility
+    window.scrollTo(0, offset)
+    window.scrollTo({ top: offset, behavior: 'auto' })
+
+    // Fallback for older browsers and iOS Safari
+    if (document.documentElement) {
+      document.documentElement.scrollTop = offset
+    }
+    if (document.body) {
+      document.body.scrollTop = offset
+    }
+
+    currentOffset.value = offset
+  }, 0)
 }
 
 function nextFrame(): Promise<void> {
