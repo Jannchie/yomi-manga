@@ -129,7 +129,12 @@ async function load(): Promise<void> {
       fetchMangaPages(mangaId),
     ])
     mangaTitle.value = meta.title
-    mangaTags.value = meta.tags
+
+    // 合并现有标签和从标题中提取的标签，去重
+    const existingTags = meta.tags || []
+    const extractedTags = extractBracketTags(meta.title)
+    mangaTags.value = [...new Set([...existingTags, ...extractedTags])]
+
     mangaType.value = meta.type
     mangaRating.value = typeof meta.rating === 'number' ? meta.rating : null
     loadedPages.value = {}
@@ -242,6 +247,63 @@ function getPageRatio(page: MangaPage): number {
 function typeLabel(type: string): string {
   const key = `categories.${type}`
   return te(key) ? t(key) : type
+}
+
+function extractBracketTags(title: string): string[] {
+  const matches = title.match(/\[([^\]]+)\]/g)
+  if (!matches) {
+    return []
+  }
+
+  const tags: string[] = []
+
+  for (const match of matches) {
+    const content = match.slice(1, -1).trim()
+
+    if (!content) {
+      continue
+    }
+
+    // 解析嵌套括号和斜杠分隔的内容
+    const parsedTags = parseBracketContent(content)
+    tags.push(...parsedTags)
+  }
+
+  return [...new Set(tags.filter(tag => tag.length > 0))]
+}
+
+function parseBracketContent(content: string): string[] {
+  const tags: string[] = []
+
+  // 先按斜杠分割（支持半角和全角斜杠）
+  const slashParts = content.split(/[/／]/).map(part => part.trim()).filter(Boolean)
+
+  for (const part of slashParts) {
+    // 检查是否有嵌套括号
+    const parenMatch = part.match(/\(([^)]+)\)/)
+
+    if (parenMatch) {
+      // 提取括号外的内容
+      const outerContent = part.replace(/\([^)]+\)/, '').trim()
+
+      if (outerContent) {
+        tags.push(outerContent)
+      }
+
+      // 提取括号内的内容
+      const innerContent = parenMatch[1]?.trim()
+
+      if (innerContent) {
+        tags.push(innerContent)
+      }
+    }
+    else {
+      // 没有嵌套括号，直接添加
+      tags.push(part)
+    }
+  }
+
+  return tags
 }
 
 function pageAspectRatio(page: MangaPage): string {
