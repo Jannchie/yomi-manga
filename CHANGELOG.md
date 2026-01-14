@@ -1,3 +1,11 @@
+## v0.2.1
+
+[v0.2.0...v0.2.1](https://github.com/Jannchie/yomi-manga/compare/v0.2.0...v0.2.1)
+
+### :adhesive_bandage: Fixes
+
+- **web**: improve layout markup && add iOS safari scroll fallbacks - By [Jannchie](mailto:jannchie@gmail.com) in [945fbe3](https://github.com/Jannchie/yomi-manga/commit/945fbe3)
+
 ## v0.2.0
 
 [v0.1.0...v0.2.0](https://github.com/Jannchie/yomi-manga/compare/v0.1.0...v0.2.0)
