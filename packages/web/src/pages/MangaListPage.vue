@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type { MangaListItem } from '../lib/api'
 
-import { useDebounceFn, useResizeObserver } from '@vueuse/core'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 
 import AuxlineBtn from '../components/auxline/Btn.vue'
 import PaginationBar from '../components/PaginationBar.vue'
 import StarRating from '../components/StarRating.vue'
+import { useMangaListQuery } from '../composables/useMangaListQuery'
 import { buildImageUrl, fetchMangaPage, fetchMangaTypes } from '../lib/api'
+import { resolveCategoryLabel } from '../lib/categories'
 
 type ErrorState = { message: string } | { key: 'loadManga' }
 
-const route = useRoute()
-const router = useRouter()
 const { t, te, locale } = useI18n()
-const page = ref(parsePage(route.query.page) ?? 1)
+const { page, searchInput, searchQuery, selectedType, setPage, setSearch, setType } = useMangaListQuery()
 const pageSize = 12
 const placeholderItems = Array.from({ length: pageSize }, (_, index) => index)
 const items = ref<MangaListItem[]>([])
@@ -24,18 +24,8 @@ const total = ref(0)
 const loading = ref(false)
 const error = ref<ErrorState | null>(null)
 const types = ref<string[]>([])
-const selectedType = ref<string | null>(parseType(route.query.type))
-const initialSearch = parseSearch(route.query.q)
-const searchQuery = ref<string | null>(initialSearch)
-const searchInput = ref(initialSearch ?? '')
-const columns = ref(2)
-const gridRef = ref<HTMLElement | null>(null)
-const gridWidth = ref(0)
 const loadedCovers = ref<Record<number, boolean>>({})
-const gridGapX = 16
-const gridGapY = 16
-const gridMetaHeight = 64
-const coverAspectRatio = 1.5
+const coverImageSizes = '(min-width: 1280px) 24rem, (min-width: 1024px) 20rem, 50vw'
 
 function updateDocumentTitle(): void {
   if (typeof document === 'undefined') {
@@ -58,43 +48,9 @@ const errorMessage = computed(() => {
   }
   return null
 })
-const gridStyle = computed<Record<string, string>>(() => {
-  const columnCount = Math.max(1, columns.value)
-  const styles: Record<string, string> = {
-    '--grid-columns': String(columnCount),
-    '--grid-gap-x': `${gridGapX}px`,
-    '--grid-gap-y': `${gridGapY}px`,
-    '--card-meta-height': `${gridMetaHeight}px`,
-  }
-
-  if (gridWidth.value > 0) {
-    const columnWidth = Math.max(
-      0,
-      (gridWidth.value - gridGapX * (columnCount - 1)) / columnCount,
-    )
-    const rowHeight = columnWidth * coverAspectRatio + gridMetaHeight
-    styles['--grid-col'] = `${columnWidth}px`
-    styles['--grid-row'] = `${rowHeight}px`
-    styles['--grid-x-step'] = `${columnWidth + gridGapX}px`
-    styles['--grid-y-step'] = `${rowHeight + gridGapY}px`
-  }
-
-  return styles
-})
-const coverBaseWidth = computed(() => {
-  if (columns.value >= 3) {
-    return 360
-  }
-
-  if (columns.value === 2) {
-    return 520
-  }
-
-  return 720
-})
 
 function coverImageUrl(path: string, scale = 1): string {
-  const width = Math.round(coverBaseWidth.value * scale)
+  const width = Math.round(480 * scale)
   const height = Math.round(width * 1.5)
   return buildImageUrl(path, {
     width,
@@ -124,7 +80,7 @@ async function load(): Promise<void> {
     total.value = response.total
 
     if (page.value > response.totalPages) {
-      page.value = Math.max(1, response.totalPages)
+      setPage(Math.max(1, response.totalPages))
     }
   }
   catch (error_) {
@@ -145,15 +101,7 @@ async function loadTypes(): Promise<void> {
 }
 
 onMounted(() => {
-  updateColumns()
-  globalThis.window.addEventListener('resize', updateColumns)
   void loadTypes()
-  void load()
-  void refreshGridWidth()
-})
-
-onBeforeUnmount(() => {
-  globalThis.window.removeEventListener('resize', updateColumns)
 })
 
 watch(locale, updateDocumentTitle, { immediate: true })
@@ -164,16 +112,12 @@ const commitSearch = useDebounceFn(() => {
     return
   }
 
-  searchQuery.value = nextSearch
-  if (page.value !== 1) {
-    page.value = 1
-  }
-  updateSearchQuery(nextSearch)
+  setSearch(nextSearch)
 }, 300)
 
 watch([page, selectedType, searchQuery], () => {
   void load()
-})
+}, { immediate: true })
 
 watch(page, (value, previous) => {
   if (value === previous) {
@@ -183,41 +127,6 @@ watch(page, (value, previous) => {
   scrollToTop()
 })
 
-watch(
-  () => route.query.page,
-  (value) => {
-    const nextPage = parsePage(value) ?? 1
-    if (nextPage !== page.value) {
-      page.value = nextPage
-    }
-  },
-)
-
-watch(
-  () => route.query.type,
-  (value) => {
-    const nextType = parseType(value)
-    if (nextType !== selectedType.value) {
-      selectedType.value = nextType
-    }
-  },
-)
-
-watch(
-  () => route.query.q,
-  (value) => {
-    const nextSearch = parseSearch(value)
-    if (nextSearch !== searchQuery.value) {
-      searchQuery.value = nextSearch
-    }
-
-    const nextInput = nextSearch ?? ''
-    if (nextInput !== searchInput.value) {
-      searchInput.value = nextInput
-    }
-  },
-)
-
 watch(searchInput, () => {
   if (searchInput.value === (searchQuery.value ?? '')) {
     return
@@ -225,50 +134,6 @@ watch(searchInput, () => {
 
   commitSearch()
 })
-
-watch(gridRef, () => {
-  void refreshGridWidth()
-})
-
-watch([items, columns], () => {
-  void refreshGridWidth()
-})
-
-useResizeObserver(gridRef, (entries) => {
-  const entry = entries[0]
-  if (!entry) {
-    return
-  }
-
-  gridWidth.value = entry.contentRect.width
-})
-
-async function refreshGridWidth(): Promise<void> {
-  await nextTick()
-  updateGridWidth()
-}
-
-function updateGridWidth(): void {
-  if (!gridRef.value) {
-    return
-  }
-
-  gridWidth.value = gridRef.value.getBoundingClientRect().width
-}
-
-function updateColumns(): void {
-  const width = globalThis.window.innerWidth
-  if (width >= 1280) {
-    columns.value = 4
-    return
-  }
-  if (width >= 1024) {
-    columns.value = 3
-    return
-  }
-
-  columns.value = 2
-}
 
 function markCoverLoaded(id: number): void {
   loadedCovers.value = { ...loadedCovers.value, [id]: true }
@@ -279,7 +144,7 @@ function buildMetaLine(item: MangaListItem): string | null {
   if (item.type) {
     const trimmed = item.type.trim()
     if (trimmed) {
-      parts.push(typeLabel(trimmed))
+      parts.push(resolveCategoryLabel(trimmed, t, te))
     }
   }
   if (item.tags && item.tags.length > 0) {
@@ -289,132 +154,9 @@ function buildMetaLine(item: MangaListItem): string | null {
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
-function typeLabel(type: string): string {
-  const key = `categories.${type}`
-  return te(key) ? t(key) : type
-}
-
-function parsePage(value: unknown): number | null {
-  if (Array.isArray(value)) {
-    return parsePage(value[0])
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    return null
-  }
-
-  return parsed
-}
-
-function parseType(value: unknown): string | null {
-  if (Array.isArray(value)) {
-    return parseType(value[0])
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed || null
-}
-
-function parseSearch(value: unknown): string | null {
-  if (Array.isArray(value)) {
-    return parseSearch(value[0])
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed || null
-}
-
 function normalizeSearch(value: string): string | null {
   const trimmed = value.trim()
   return trimmed || null
-}
-
-function updatePageQuery(nextPage: number): void {
-  const currentPage = parsePage(route.query.page) ?? 1
-  if (currentPage === nextPage) {
-    return
-  }
-
-  void router.push({
-    path: route.path,
-    query: {
-      ...route.query,
-      page: String(nextPage),
-    },
-  })
-}
-
-function selectType(nextType: string | null): void {
-  if (selectedType.value === nextType && page.value === 1) {
-    return
-  }
-
-  selectedType.value = nextType
-  if (page.value !== 1) {
-    page.value = 1
-  }
-  updateTypeQuery(nextType)
-}
-
-function updateTypeQuery(nextType: string | null): void {
-  const currentType = parseType(route.query.type)
-  if (currentType === nextType && page.value === 1) {
-    return
-  }
-
-  const nextQuery: Record<string, string | string[] | null | undefined> = {
-    ...route.query,
-    page: '1',
-  }
-
-  if (nextType) {
-    nextQuery.type = nextType
-  }
-  else {
-    delete nextQuery.type
-  }
-
-  void router.push({
-    path: route.path,
-    query: nextQuery,
-  })
-}
-
-function updateSearchQuery(nextSearch: string | null): void {
-  const currentSearch = parseSearch(route.query.q)
-  if (currentSearch === nextSearch && page.value === 1) {
-    return
-  }
-
-  const nextQuery: Record<string, string | string[] | null | undefined> = {
-    ...route.query,
-    page: '1',
-  }
-
-  if (nextSearch) {
-    nextQuery.q = nextSearch
-  }
-  else {
-    delete nextQuery.q
-  }
-
-  void router.push({
-    path: route.path,
-    query: nextQuery,
-  })
 }
 
 function scrollToTop(): void {
@@ -444,7 +186,7 @@ function scrollToTop(): void {
           size="sm"
           :aria-pressed="selectedType === null"
           :variant="selectedType === null ? 'contrast' : 'solid'"
-          @click="selectType(null)"
+          @click="setType(null)"
         >
           {{ t('common.all') }}
         </AuxlineBtn>
@@ -455,9 +197,9 @@ function scrollToTop(): void {
           size="sm"
           :aria-pressed="selectedType === type"
           :variant="selectedType === type ? 'contrast' : 'solid'"
-          @click="selectType(type)"
+          @click="setType(type)"
         >
-          {{ typeLabel(type) }}
+          {{ resolveCategoryLabel(type, t, te) }}
         </AuxlineBtn>
       </div>
     </div>
@@ -469,9 +211,7 @@ function scrollToTop(): void {
     </div>
     <div
       v-else-if="loading"
-      ref="gridRef"
       class="manga-grid"
-      :style="gridStyle"
       aria-hidden="true"
     >
       <div
@@ -501,9 +241,7 @@ function scrollToTop(): void {
     </div>
     <div
       v-else
-      ref="gridRef"
       class="manga-grid"
-      :style="gridStyle"
     >
       <RouterLink
         v-for="item in items"
@@ -520,6 +258,7 @@ function scrollToTop(): void {
             v-if="item.coverPath"
             :src="coverImageUrl(item.coverPath)"
             :srcset="coverImageSrcSet(item.coverPath)"
+            :sizes="coverImageSizes"
             :alt="t('list.coverAlt', { title: item.title })"
             class="manga-image manga-image-cover absolute inset-0 z-10 h-full w-full object-cover"
             loading="lazy"
@@ -560,7 +299,7 @@ function scrollToTop(): void {
       :page="page"
       :total-pages="totalPages"
       :disabled="loading"
-      @change="updatePageQuery($event)"
+      @change="setPage($event)"
     />
     <div
       v-if="items.length > 0 && totalPages > 1"

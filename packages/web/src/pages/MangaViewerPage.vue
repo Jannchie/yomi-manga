@@ -9,6 +9,7 @@ import { Waterfall } from 'vue-wf'
 import AuxlineBtn from '../components/auxline/Btn.vue'
 import StarRating from '../components/StarRating.vue'
 import { buildImageUrl, fetchMangaMeta, fetchMangaPages, updateMangaRating } from '../lib/api'
+import { resolveCategoryLabel } from '../lib/categories'
 
 type ErrorState = { message: string } | { key: 'invalidMangaId' | 'loadManga' }
 
@@ -47,7 +48,7 @@ const mangaTypeLabel = computed(() => {
   }
 
   const trimmed = mangaType.value.trim()
-  return trimmed ? typeLabel(trimmed) : null
+  return trimmed ? resolveCategoryLabel(trimmed, t, te) : null
 })
 const mangaTagsList = computed(() => {
   if (!mangaTags.value || mangaTags.value.length === 0) {
@@ -130,7 +131,7 @@ async function load(): Promise<void> {
     ])
     mangaTitle.value = meta.title
 
-    // 合并现有标签和从标题中提取的标签，去重
+    // Merge stored tags with title-derived tags and deduplicate them.
     const existingTags = meta.tags || []
     const extractedTags = extractBracketTags(meta.title)
     mangaTags.value = [...new Set([...existingTags, ...extractedTags])]
@@ -161,7 +162,7 @@ const scheduleAnchorUpdate = useDebounceFn(() => {
     return
   }
 
-  // iOS Safari compatibility: use documentElement.scrollTop as fallback
+  // iOS Safari compatibility: use documentElement.scrollTop as fallback.
   const offset = Math.max(0, Math.round(
     window.scrollY
     || window.pageYOffset
@@ -229,14 +230,14 @@ async function scrollToHash(hash: string): Promise<void> {
     return
   }
 
-  // iOS Safari compatibility: use setTimeout and multiple scroll methods
+  // iOS Safari compatibility: retry after the next tick and frame.
   await nextTick()
   setTimeout(() => {
-    // Try multiple scroll methods for maximum compatibility
+    // Try multiple scroll methods for maximum compatibility.
     window.scrollTo(0, offset)
     window.scrollTo({ top: offset, behavior: 'auto' })
 
-    // Fallback for older browsers and iOS Safari
+    // Fallback for older browsers and iOS Safari.
     if (document.documentElement) {
       document.documentElement.scrollTop = offset
     }
@@ -266,11 +267,6 @@ function getPageRatio(page: MangaPage): number {
   return 2 / 3
 }
 
-function typeLabel(type: string): string {
-  const key = `categories.${type}`
-  return te(key) ? t(key) : type
-}
-
 function extractBracketTags(title: string): string[] {
   const matches = title.match(/\[([^\]]+)\]/g)
   if (!matches) {
@@ -286,7 +282,7 @@ function extractBracketTags(title: string): string[] {
       continue
     }
 
-    // 解析嵌套括号和斜杠分隔的内容
+    // Parse nested parentheses and slash-delimited content.
     const parsedTags = parseBracketContent(content)
     tags.push(...parsedTags)
   }
@@ -297,22 +293,22 @@ function extractBracketTags(title: string): string[] {
 function parseBracketContent(content: string): string[] {
   const tags: string[] = []
 
-  // 先按斜杠分割（支持半角和全角斜杠）
+  // Split on both half-width and full-width slashes first.
   const slashParts = content.split(/[/／]/).map(part => part.trim()).filter(Boolean)
 
   for (const part of slashParts) {
-    // 检查是否有嵌套括号
+    // Check for nested parentheses.
     const parenMatch = part.match(/\(([^)]+)\)/)
 
     if (parenMatch) {
-      // 提取括号外的内容
+      // Collect the content outside the parentheses.
       const outerContent = part.replace(/\([^)]+\)/, '').trim()
 
       if (outerContent) {
         tags.push(outerContent)
       }
 
-      // 提取括号内的内容
+      // Collect the content inside the parentheses.
       const innerContent = parenMatch[1]?.trim()
 
       if (innerContent) {
@@ -320,7 +316,7 @@ function parseBracketContent(content: string): string[] {
       }
     }
     else {
-      // 没有嵌套括号，直接添加
+      // No nested parentheses, keep the part as-is.
       tags.push(part)
     }
   }

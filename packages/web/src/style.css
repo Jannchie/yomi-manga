@@ -172,55 +172,15 @@ img {
 }
 
 .manga-grid {
-  --grid-columns: 2;
-  --grid-gap-x: 1rem;
-  --grid-gap-y: 1rem;
-  --grid-line: 1px;
-  --card-meta-height: 4rem;
-  --grid-col: calc((100% - (var(--grid-columns) - 1) * var(--grid-gap-x)) / var(--grid-columns));
-  --grid-row: calc(var(--grid-col) + (var(--grid-col) / 2) + var(--card-meta-height));
-  --grid-x-step: calc(var(--grid-col) + var(--grid-gap-x));
-  --grid-y-step: calc(var(--grid-row) + var(--grid-gap-y));
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: var(--grid-gap-x);
-  row-gap: var(--grid-gap-y);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
   border-bottom: 1px solid var(--border);
   margin-bottom: 1rem;
-  background-image:
-    repeating-linear-gradient(
-      to right,
-      transparent 0 calc(var(--grid-col)),
-      var(--border) calc(var(--grid-col)) calc(var(--grid-col) + var(--grid-line)),
-      transparent calc(var(--grid-col) + var(--grid-line)) var(--grid-x-step)
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0 calc(var(--grid-row)),
-      var(--border) calc(var(--grid-row)) calc(var(--grid-row) + var(--grid-line)),
-      transparent calc(var(--grid-row) + var(--grid-line)) var(--grid-y-step)
-    ),
-    repeating-linear-gradient(
-      to right,
-      transparent 0 calc(var(--grid-col) + var(--grid-gap-x) - var(--grid-line)),
-      var(--border) calc(var(--grid-col) + var(--grid-gap-x) - var(--grid-line))
-        calc(var(--grid-col) + var(--grid-gap-x)),
-      transparent calc(var(--grid-col) + var(--grid-gap-x)) var(--grid-x-step)
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0 calc(var(--grid-row) + var(--grid-gap-y) - var(--grid-line)),
-      var(--border) calc(var(--grid-row) + var(--grid-gap-y) - var(--grid-line))
-        calc(var(--grid-row) + var(--grid-gap-y)),
-      transparent calc(var(--grid-row) + var(--grid-gap-y)) var(--grid-y-step)
-    );
 }
 
 .manga-card {
-  box-sizing: border-box;
-  flex: 0 0 var(--grid-col);
-  max-width: var(--grid-col);
-  height: var(--grid-row);
+  min-width: 0;
 }
 
 .manga-card--placeholder {
@@ -229,19 +189,18 @@ img {
 
 @media (min-width: 1024px) {
   .manga-grid {
-    --grid-columns: 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1280px) {
   .manga-grid {
-    --grid-columns: 4;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 .manga-card-meta {
-  box-sizing: border-box;
-  height: var(--card-meta-height);
+  height: 4rem;
   overflow: hidden;
 }
 
