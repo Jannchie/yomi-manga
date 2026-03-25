@@ -3,7 +3,7 @@
 
 :root {
   --bg: #f5f4f2;
-  --border: #e1e0dd;
+  --border: #cccac6;
   --ink: #1c1d20;
   --muted: #5f646c;
   --surface: #fbfbfa;
@@ -20,7 +20,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0f1011;
-    --border: #23262a;
+    --border: #2e3238;
     --ink: #e6e7ea;
     --muted: #9aa1a9;
     --surface: #141517;
@@ -172,11 +172,46 @@ img {
 }
 
 .manga-grid {
+  --grid-columns: 2;
+  --grid-gap: 1rem;
+  --grid-line: 1px;
+  --card-meta-height: 4rem;
+  --grid-col: calc((100cqw - (var(--grid-columns) - 1) * var(--grid-gap)) / var(--grid-columns));
+  --grid-row: calc(var(--grid-col) * 3 / 2 + var(--card-meta-height));
+  --grid-x-step: calc(var(--grid-col) + var(--grid-gap));
+  --grid-y-step: calc(var(--grid-row) + var(--grid-gap));
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: var(--grid-gap);
   border-bottom: 1px solid var(--border);
   margin-bottom: 1rem;
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      transparent 0 calc(var(--grid-col)),
+      var(--border) calc(var(--grid-col)) calc(var(--grid-col) + var(--grid-line)),
+      transparent calc(var(--grid-col) + var(--grid-line)) var(--grid-x-step)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 calc(var(--grid-row)),
+      var(--border) calc(var(--grid-row)) calc(var(--grid-row) + var(--grid-line)),
+      transparent calc(var(--grid-row) + var(--grid-line)) var(--grid-y-step)
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0 calc(var(--grid-col) + var(--grid-gap) - var(--grid-line)),
+      var(--border) calc(var(--grid-col) + var(--grid-gap) - var(--grid-line))
+        calc(var(--grid-col) + var(--grid-gap)),
+      transparent calc(var(--grid-col) + var(--grid-gap)) var(--grid-x-step)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 calc(var(--grid-row) + var(--grid-gap) - var(--grid-line)),
+      var(--border) calc(var(--grid-row) + var(--grid-gap) - var(--grid-line))
+        calc(var(--grid-row) + var(--grid-gap)),
+      transparent calc(var(--grid-row) + var(--grid-gap)) var(--grid-y-step)
+    );
 }
 
 .manga-card {
@@ -189,17 +224,20 @@ img {
 
 @media (min-width: 1024px) {
   .manga-grid {
+    --grid-columns: 3;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1280px) {
   .manga-grid {
+    --grid-columns: 4;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 .manga-card-meta {
+  box-sizing: border-box;
   height: 4rem;
   overflow: hidden;
 }

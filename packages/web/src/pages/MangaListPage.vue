@@ -169,7 +169,7 @@ function scrollToTop(): void {
 </script>
 
 <template>
-  <section>
+  <section style="container-type: inline-size">
     <div class="search-bar">
       <input
         v-model="searchInput"
