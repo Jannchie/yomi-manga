@@ -1,3 +1,15 @@
+## v0.2.2
+
+[v0.2.1...v0.2.2](https://github.com/Jannchie/yomi-manga/compare/v0.2.1...v0.2.2)
+
+### :art: Refactors
+
+- **api,web**: split api routes and ui logic into separate modules - By [Jannchie](mailto:jannchie@gmail.com) in [8c59f40](https://github.com/Jannchie/yomi-manga/commit/8c59f40)
+
+### :lipstick: Styles
+
+- **web**: adjust layout and CSS variables for manga grid visuals - By [Jannchie](mailto:jannchie@gmail.com) in [3bddd87](https://github.com/Jannchie/yomi-manga/commit/3bddd87)
+
 ## v0.2.1
 
 [v0.2.0...v0.2.1](https://github.com/Jannchie/yomi-manga/compare/v0.2.0...v0.2.1)
